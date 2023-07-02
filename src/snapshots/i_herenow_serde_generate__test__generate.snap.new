@@ -1,0 +1,261 @@
+---
+source: src/test.rs
+assertion_line: 64
+expression: "get_types_by_tag(\"fsharp\")"
+---
+[
+    TypeRoot {
+        file: "src/test.rs",
+        inner: Named {
+            name: SpanStr {
+                text: "UnitType",
+                bytes: (
+                    566,
+                    574,
+                ),
+            },
+            rename: None,
+            docs: None,
+            value: UnitStruct,
+        },
+    },
+    TypeRoot {
+        file: "src/test.rs",
+        inner: Named {
+            name: SpanStr {
+                text: "Basic",
+                bytes: (
+                    644,
+                    649,
+                ),
+            },
+            rename: None,
+            docs: None,
+            value: Struct(
+                [
+                    Named {
+                        name: SpanStr {
+                            text: "a",
+                            bytes: (
+                                656,
+                                657,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: I32,
+                    },
+                    Named {
+                        name: SpanStr {
+                            text: "b",
+                            bytes: (
+                                668,
+                                669,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: Str,
+                    },
+                ],
+            ),
+        },
+    },
+    TypeRoot {
+        file: "src/test.rs",
+        inner: Named {
+            name: SpanStr {
+                text: "BasicNest",
+                bytes: (
+                    749,
+                    758,
+                ),
+            },
+            rename: None,
+            docs: None,
+            value: Struct(
+                [
+                    Named {
+                        name: SpanStr {
+                            text: "id",
+                            bytes: (
+                                765,
+                                767,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: Str,
+                    },
+                    Named {
+                        name: SpanStr {
+                            text: "b",
+                            bytes: (
+                                781,
+                                782,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: TypeName(
+                            "Basic",
+                        ),
+                    },
+                ],
+            ),
+        },
+    },
+    TypeRoot {
+        file: "src/test.rs",
+        inner: Named {
+            name: SpanStr {
+                text: "BasicEnum",
+                bytes: (
+                    859,
+                    868,
+                ),
+            },
+            rename: None,
+            docs: None,
+            value: Enum(
+                {
+                    0: Named {
+                        name: SpanStr {
+                            text: "A",
+                            bytes: (
+                                875,
+                                876,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: NewType(
+                            U64,
+                        ),
+                    },
+                    1: Named {
+                        name: SpanStr {
+                            text: "B",
+                            bytes: (
+                                889,
+                                890,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: NewType(
+                            Str,
+                        ),
+                    },
+                    2: Named {
+                        name: SpanStr {
+                            text: "D",
+                            bytes: (
+                                925,
+                                926,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: Struct(
+                            [
+                                Named {
+                                    name: SpanStr {
+                                        text: "da",
+                                        bytes: (
+                                            937,
+                                            939,
+                                        ),
+                                    },
+                                    rename: None,
+                                    docs: None,
+                                    value: Str,
+                                },
+                                Named {
+                                    name: SpanStr {
+                                        text: "db",
+                                        bytes: (
+                                            957,
+                                            959,
+                                        ),
+                                    },
+                                    rename: None,
+                                    docs: None,
+                                    value: U64,
+                                },
+                                Named {
+                                    name: SpanStr {
+                                        text: "dc",
+                                        bytes: (
+                                            976,
+                                            978,
+                                        ),
+                                    },
+                                    rename: None,
+                                    docs: None,
+                                    value: Option(
+                                        U64,
+                                    ),
+                                },
+                            ],
+                        ),
+                    },
+                    3: Named {
+                        name: SpanStr {
+                            text: "E",
+                            bytes: (
+                                1037,
+                                1038,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: Tuple(
+                            [
+                                U32,
+                                U64,
+                            ],
+                        ),
+                    },
+                    4: Named {
+                        name: SpanStr {
+                            text: "F",
+                            bytes: (
+                                1054,
+                                1055,
+                            ),
+                        },
+                        rename: None,
+                        docs: None,
+                        value: Tuple(
+                            [
+                                U32,
+                                U64,
+                            ],
+                        ),
+                    },
+                },
+            ),
+        },
+    },
+    TypeRoot {
+        file: "src/test.rs",
+        inner: Named {
+            name: SpanStr {
+                text: "ATuplePartiallyNamed",
+                bytes: (
+                    1149,
+                    1169,
+                ),
+            },
+            rename: None,
+            docs: None,
+            value: TupleStruct(
+                [
+                    U64,
+                    U64,
+                ],
+            ),
+        },
+    },
+]

@@ -1,0 +1,19 @@
+[package]
+name = "serde-as-schema"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+linkme = "0.3.10"
+serde = { version = "1.0.164", features = ["derive"]}
+serde_json = "1.0.99"
+i-herenow-serde-generate-derive = { version = "0.1.0",  path = "derive" }
+i-herenow-serde-generate-code = { version = "0.1.0",  path = "code" }
+i-herenow-serde-generate-types = { version = "0.1.0",  path = "types" }
+rayon = "1.7.0"
+
+[dev-dependencies]
+insta = "1.30.0"

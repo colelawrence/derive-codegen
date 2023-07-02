@@ -1,0 +1,139 @@
+---
+source: src/test.rs
+assertion_line: 103
+expression: "serde_json::to_string_pretty(&inputs).unwrap()"
+---
+[
+  {
+    "container_kind": {
+      "TupleStruct": [
+        "USIZE",
+        "USIZE"
+      ]
+    },
+    "id": "ATuplePartiallyNamed",
+    "id_location": "L(src/test.rs:55:79 #B1421-B1441)",
+    "rust_docs": "These renames don't actually affect the generation.\nSee [Feature request: Allow `#[serde(rename = \"...\")]` on tuple struct / tuple variant member fields #1510](https://github.com/serde-rs/serde/issues/1510)"
+  },
+  {
+    "codegen_attrs": {
+      "tags": [
+        "docs",
+        "L(src/test.rs:85:26 #B1951-B1957)"
+      ]
+    },
+    "container_kind": {
+      "Struct": {
+        "fields": [
+          {
+            "format": "USIZE",
+            "id": "a",
+            "id_location": "L(src/test.rs:87:45 #B2003-B2004)",
+            "rust_docs": "Doc comment"
+          },
+          {
+            "format": "Str",
+            "id": "b",
+            "id_location": "L(src/test.rs:88:33 #B2017-B2018)",
+            "rust_docs": null
+          }
+        ]
+      }
+    },
+    "id": "Basically",
+    "id_location": "L(src/test.rs:86:41 #B1967-B1976)",
+    "rust_docs": "Test doc comment\nSecond line\n```sh\nSome code\n```\nReference to [BasicEnum].",
+    "serde_attrs": {
+      "rename": [
+        "basically",
+        "L(src/test.rs:82:42 #B1920-B1931)"
+      ]
+    }
+  },
+  {
+    "codegen_attrs": {
+      "tags": [
+        "docs",
+        "L(src/test.rs:92:27 #B2080-B2086)"
+      ]
+    },
+    "container_kind": {
+      "Struct": {
+        "fields": [
+          {
+            "format": {
+              "Option": "USIZE"
+            },
+            "id": "usize_opt",
+            "id_location": "L(src/test.rs:95:80 #B2202-B2211)",
+            "rust_docs": "Other option",
+            "serde_attrs": {
+              "alias": [
+                "usize",
+                "L(src/test.rs:94:106 #B2188-B2195)"
+              ],
+              "rename": [
+                "usizeOpt",
+                "L(src/test.rs:94:73 #B2155-B2165)"
+              ]
+            }
+          },
+          {
+            "format": "Str",
+            "id": "b",
+            "id_location": "L(src/test.rs:96:36 #B2232-B2233)",
+            "rust_docs": null
+          }
+        ]
+      }
+    },
+    "id": "BasicallyOther",
+    "id_location": "L(src/test.rs:93:35 #B2096-B2110)",
+    "rust_docs": null
+  },
+  {
+    "codegen_attrs": {
+      "tags": [
+        "docs",
+        "L(src/test.rs:98:39 #B2295-B2301)"
+      ]
+    },
+    "container_kind": {
+      "Struct": {
+        "fields": [
+          {
+            "format": {
+              "TypeName": "Result_OkBasicallyOther_ErrStr"
+            },
+            "id": "result",
+            "id_location": "L(src/test.rs:99:42 #B2330-B2336)",
+            "rust_docs": null
+          }
+        ]
+      }
+    },
+    "id": "ActionResult",
+    "id_location": "L(src/test.rs:98:55 #B2311-B2323)",
+    "rust_docs": null
+  },
+  {
+    "container_kind": {
+      "Enum": {
+        "repr": "External",
+        "variants": [
+          {
+            "NewType": {
+              "TypeName": "BasicallyOther"
+            }
+          },
+          {
+            "NewType": "Str"
+          }
+        ]
+      }
+    },
+    "id": "Result_OkBasicallyOther_ErrStr",
+    "id_location": "L(src/test.rs:99:50 #B2338-B2344)",
+    "rust_docs": "`Result` is a type that represents either success ([`Ok`]) or failure ([`Err`])."
+  }
+]

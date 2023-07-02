@@ -1,0 +1,6 @@
+---
+source: src/test.rs
+assertion_line: 53
+expression: "\"\""
+---
+
