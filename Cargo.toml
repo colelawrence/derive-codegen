@@ -14,9 +14,9 @@ derive-codegen = { path = "." }
 i-codegen-code = { path = "./code" }
 i-codegen-derive = { path = "./derive" }
 i-codegen-types = { path = "./types" }
-linkme = "0.3.10"
-serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.99"
+linkme = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [package]
 name = "derive-codegen"

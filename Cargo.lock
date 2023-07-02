@@ -125,7 +125,6 @@ version = "0.0.1"
 dependencies = [
  "i-codegen-code",
  "i-codegen-types",
- "linkme",
  "proc-macro2",
  "quote",
  "serde",
