@@ -45,7 +45,9 @@ struct Output {
 #[derive(Deserialize, Debug, CodegenInternal)]
 #[codegen(tags = "derive-codegen-internal")]
 struct OutputFile {
+    /// Example: `./some-dir/filename.txt`
     path: String,
+    /// Example: `"Hello world"`
     source: String,
 }
 

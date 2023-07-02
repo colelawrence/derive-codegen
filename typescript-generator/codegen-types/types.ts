@@ -48,7 +48,9 @@ export function Output(inner: Output): Output {
 }
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export type OutputFile = {
+  /** Example: `./some-dir/filename.txt` */
   path: string;
+  /** Example: `"Hello world"` */
   source: string;
 };
 /** `#[codegen(tags = "derive-codegen-internal")]` */

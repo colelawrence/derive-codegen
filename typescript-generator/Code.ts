@@ -53,12 +53,13 @@ export class Code {
     }
   }
   get lastLine(): string {
-    const last = this.lines[this.lines.length - 1]
-    if (typeof last !== "string") throw new Error("Expected last line to be a string")
-    return last
+    const last = this.lines[this.lines.length - 1];
+    if (typeof last !== "string")
+      throw new Error("Expected last line to be a string");
+    return last;
   }
   set lastLine(value: string) {
-    this.lines[this.lines.length - 1] = value
+    this.lines[this.lines.length - 1] = value;
   }
   add(arr: TemplateStringsArray, ...args: Args) {
     this.lines.push(raw(arr, ...args));
