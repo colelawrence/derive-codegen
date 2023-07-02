@@ -20,7 +20,7 @@ serde_json = "1.0"
 [package]
 name = "derive-codegen"
 description = "Highly-configurable code generation tooling based on Rust types."
-version.workspace = true
+version = "0.0.1"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
