@@ -95,7 +95,7 @@ export class Code {
   }
 
   toString() {
-    console.error(Deno.inspect(this, { colors: true, depth: Infinity }));
+    // console.error(Deno.inspect(this, { colors: true, depth: Infinity }));
     return this.toStringIndented(this.indentation, 0);
   }
 }

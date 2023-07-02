@@ -70,6 +70,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-codegen"
+version = "0.0.1"
+dependencies = [
+ "i-codegen-code",
+ "i-codegen-derive",
+ "i-codegen-types",
+ "insta",
+ "linkme",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -82,16 +96,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
+name = "examples"
+version = "0.1.0"
+dependencies = [
+ "derive-codegen",
+]
+
+[[package]]
 name = "hermit-abi"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
-name = "i-herenow-serde-generate-code"
-version = "0.1.0"
+name = "i-codegen-code"
+version = "0.0.1"
 dependencies = [
- "i-herenow-serde-generate-types",
+ "i-codegen-types",
  "linkme",
  "serde",
  "serde-reflection",
@@ -99,11 +120,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "i-herenow-serde-generate-derive"
-version = "0.1.0"
+name = "i-codegen-derive"
+version = "0.0.1"
 dependencies = [
- "i-herenow-serde-generate-code",
- "i-herenow-serde-generate-types",
+ "i-codegen-code",
+ "i-codegen-types",
  "linkme",
  "proc-macro2",
  "quote",
@@ -114,8 +135,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "i-herenow-serde-generate-types"
-version = "0.1.0"
+name = "i-codegen-types"
+version = "0.0.1"
 dependencies = [
  "serde",
 ]
@@ -213,9 +234,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.28"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9ab9c7eadfd8df19006f1cf1a4aed13540ed5cbc047010ece5826e10825488"
+checksum = "573015e8ab27661678357f27dc26460738fd2b6c86e46f386fde94cb5d913105"
 dependencies = [
  "proc-macro2",
 ]
@@ -261,20 +282,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-as-schema"
-version = "0.1.0"
-dependencies = [
- "i-herenow-serde-generate-code",
- "i-herenow-serde-generate-derive",
- "i-herenow-serde-generate-types",
- "insta",
- "linkme",
- "rayon",
- "serde",
- "serde_json",
 ]
 
 [[package]]

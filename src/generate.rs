@@ -1,4 +1,4 @@
-use i_herenow_serde_generate_types as st;
+use i_codegen_types as st;
 use rayon::prelude::*;
 use serde::{self, Deserialize, Serialize};
 use st::TypeRoot;
@@ -11,18 +11,18 @@ use std::{
     io::BufReader,
 };
 
-#[derive(Codegen, Serialize, Deserialize, Clone, Debug)]
+#[derive(CodegenInternal, Serialize, Deserialize, Clone, Debug)]
 #[serde(transparent)]
 #[codegen(tags = "herenow-generator-internal")]
 struct LocationID(String);
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct Input {
     declarations: Vec<InputDeclaration>,
 }
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct InputDeclaration {
     id: String,
@@ -32,7 +32,7 @@ struct InputDeclaration {
     container_kind: ContainerFormat,
 }
 
-#[derive(Deserialize, Debug, Codegen)]
+#[derive(Deserialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct Output {
     errors: Vec<OutputMessage>,
@@ -40,14 +40,14 @@ struct Output {
     files: Vec<OutputFile>,
 }
 
-#[derive(Deserialize, Debug, Codegen)]
+#[derive(Deserialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct OutputFile {
     path: String,
     source: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Codegen)]
+#[derive(Serialize, Deserialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct OutputMessage {
     message: String,
@@ -58,7 +58,7 @@ struct OutputMessage {
 /// Serde-based serialization format for anonymous "value" types.
 /// This is just the path respecting serde names into the container
 /// It gets replaced by the knowledge
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 enum Format {
     Incomplete {
@@ -112,7 +112,7 @@ enum Format {
 
 /// Serde-based serialization format for named "container" types.
 /// In Rust, those are enums and structs.
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 enum ContainerFormat {
     /// An empty struct, e.g. `struct A`.
@@ -131,7 +131,7 @@ enum ContainerFormat {
     },
 }
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct NamedVariant {
     id: String,
@@ -141,7 +141,7 @@ struct NamedVariant {
     variant_format: VariantFormat,
 }
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct NamedField {
     id: String,
@@ -151,7 +151,7 @@ struct NamedField {
     format: Format,
 }
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 /// Description of a variant in an enum.
 enum VariantFormat {
@@ -165,7 +165,7 @@ enum VariantFormat {
     Struct { fields: Vec<NamedField> },
 }
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 struct Attrs {
     /// Documentation comments like this one.
@@ -185,7 +185,7 @@ struct Attrs {
     codegen_flags: BTreeMap<String, LocationID>,
 }
 
-#[derive(Serialize, Debug, Codegen)]
+#[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "herenow-generator-internal")]
 enum EnumRepresentation {
     /// The default
@@ -474,7 +474,7 @@ pub enum GenerationCommand<'a> {
 
 #[track_caller]
 pub fn generate_for_tag(tag: &str, command: GenerationCommand<'_>) {
-    let tys = i_herenow_serde_generate_code::get_types_by_tag(tag);
+    let tys = i_codegen_code::get_types_by_tag(tag);
     let inputs = crate::generate::create_input_json_from_type_roots(tys);
     match command {
         GenerationCommand::PipeInto(mut cmd) => {
@@ -513,13 +513,17 @@ pub fn generate_for_tag(tag: &str, command: GenerationCommand<'_>) {
                     format!("Failed to parsed output as JSON of output files: {err:?}, from:\n{stdout_str}")
                 })
                 .expect("parsing output");
-            
+
             for err in output.errors {
                 eprintln!("Output error:\n{err:?}")
             }
 
             for OutputFile { path, source } in output.files {
-                write!(&mut std::fs::File::create(path).expect("open file from output"), "{}", source);
+                write!(
+                    &mut std::fs::File::create(path).expect("open file from output"),
+                    "{}",
+                    source
+                );
             }
         }
     }

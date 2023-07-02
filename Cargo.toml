@@ -1,18 +1,44 @@
-[package]
-name = "serde-as-schema"
-version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
+[workspace]
+members = ["./derive", "./code", "./types", "./examples"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+authors = ["Cole Lawrence <cole@colelawrence.com>"]
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/colelawrence/derive-codegen"
+documentation = "https://docs.rs/derive-codegen/"
+
+[workspace.dependencies]
+derive-codegen = { path = "." }
+i-codegen-code = { path = "./code" }
+i-codegen-derive = { path = "./derive" }
+i-codegen-types = { path = "./types" }
+linkme = "0.3.10"
+serde = { version = "1.0.164", features = ["derive"] }
+serde_json = "1.0.99"
+
+[package]
+name = "derive-codegen"
+description = "Highly-configurable code generation tooling based on Rust types."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+readme = "README.md"
+keywords = ["serde", "build", "codegen", "macro", "schema"]
+categories = ["development-tools::build-utils"]
+exclude = ["/.github/**"]
 
 [dependencies]
-linkme = "0.3.10"
-serde = { version = "1.0.164", features = ["derive"]}
-serde_json = "1.0.99"
-i-herenow-serde-generate-derive = { version = "0.1.0",  path = "derive" }
-i-herenow-serde-generate-code = { version = "0.1.0",  path = "code" }
-i-herenow-serde-generate-types = { version = "0.1.0",  path = "types" }
+serde.workspace = true
+serde_json.workspace = true
+i-codegen-derive.workspace = true
+i-codegen-code.workspace = true
+i-codegen-types.workspace = true
+linkme.workspace = true
 rayon = "1.7.0"
 
 [dev-dependencies]

@@ -1,7 +1,7 @@
 use std::process::Command;
 
-use i_herenow_serde_generate_code::get_types_by_tag;
-use i_herenow_serde_generate_derive::Codegen;
+use i_codegen_code::get_types_by_tag;
+use i_codegen_derive::CodegenInternal as Codegen;
 use serde::{Deserialize, Serialize};
 
 use crate::generate::{generate_for_tag, GenerationCommand};

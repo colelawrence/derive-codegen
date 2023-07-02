@@ -1,5 +1,5 @@
-use i_herenow_serde_generate_code::utils;
-use i_herenow_serde_generate_types as st;
+use i_codegen_code::utils;
+use i_codegen_types as st;
 use st::{Named, TypeRoot};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -12,8 +12,13 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, DeriveInput, Ident, Result};
 
-/// see [i_herenow_serde_generate_code::Context]
-pub fn derive(input: DeriveInput) -> Result<TokenStream> {
+pub enum DerivationKind {
+    Internal,
+    External { crate_name: &'static str },
+}
+
+/// see [i_codegen_code::Context]
+pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
     let ident: &Ident = &input.ident;
     let dummy = Ident::new(
         &format!("_IMPL_HERENOW_GENERATE_FOR_{}", ident),
@@ -69,10 +74,17 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream> {
         .flatten()
         .map(|attr| syn::LitStr::new(&attr, Span::call_site()));
 
+    // This will give a rust analyzer warning because of https://github.com/rust-lang/rust-analyzer/issues/6541
+    let i_codegen_code_crate_q = match kind {
+        DerivationKind::Internal => Ident::new("i_codegen_code", Span::call_site()),
+        DerivationKind::External { crate_name } => Ident::new(&crate_name, Span::call_site()),
+    };
+
     Ok(quote! {
         #[allow(non_upper_case_globals)]
-        #[linkme::distributed_slice(i_herenow_serde_generate_code::HERENOW_SERDE_TRACER)]
-        fn #dummy(context: &mut i_herenow_serde_generate_code::Context) {
+        #[::#i_codegen_code_crate_q::linkme::distributed_slice(::#i_codegen_code_crate_q::CODEGEN_ITEMS)]
+        #[linkme(crate = ::#i_codegen_code_crate_q::linkme)]
+        fn #dummy(context: &mut ::#i_codegen_code_crate_q::Context) {
             context.trace_type_root::<#ident>(#type_root_json_lit, file!(), line!(), &[#(#q_tags,)*]);
         };
     })
@@ -434,28 +446,28 @@ impl<'a> ParseContext {
         // is handed to `generic_to_ts` which possibly "bottoms out"
         // by generating tokens for typescript types.
 
-        use syn::Type::*;
+        use syn::Type as SynType;
         use syn::{
             TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeParamBound, TypeParen, TypePath,
             TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
         };
         match ty {
-            Slice(TypeSlice { elem, .. })
-            | Array(TypeArray { elem, .. })
-            | Ptr(TypePtr { elem, .. }) => self.type_to_seq(elem),
-            Reference(TypeReference { elem, .. }) => self.type_to_format(elem),
+            SynType::Slice(TypeSlice { elem, .. })
+            | SynType::Array(TypeArray { elem, .. })
+            | SynType::Ptr(TypePtr { elem, .. }) => self.type_to_seq(elem),
+            SynType::Reference(TypeReference { elem, .. }) => self.type_to_format(elem),
             // // fn(a: A,b: B, c:C) -> D
             // BareFn(TypeBareFn { inputs, .. }) => {
             //     self.ctxt
             //         .err_msg(inputs, "we do not support functions");
             //     quote!(any)
             // }
-            Never(..) => st::Format::Never,
-            Tuple(TypeTuple { elems, .. }) => {
+            SynType::Never(..) => st::Format::Never,
+            SynType::Tuple(TypeTuple { elems, .. }) => {
                 let elems = elems.iter().map(|t| self.type_to_format(t));
                 st::Format::Tuple(elems.collect())
             }
-            Path(TypePath { path, .. }) => match last_path_element(&path) {
+            SynType::Path(TypePath { path, .. }) => match last_path_element(&path) {
                 Some(ref ts) => self.generic_to_format(ts),
                 _ => st::Format::Incomplete {
                     debug: format!("Unknown type path: {path:?}"),
@@ -475,16 +487,16 @@ impl<'a> ParseContext {
             //     // A + B + C => A & B & C
             //     quote!(#(#elems)&*)
             // }
-            Paren(TypeParen { elem, .. }) | Group(TypeGroup { elem, .. }) => {
+            SynType::Paren(TypeParen { elem, .. }) | SynType::Group(TypeGroup { elem, .. }) => {
                 self.type_to_format(elem)
             }
-            Infer(..) | Macro(..) | Verbatim(..) => st::Format::Incomplete {
-                debug: format!("unknown-type: {ty:?}"),
-            },
-            // Recommended way to test exhaustiveness without breaking API https://github.com/dtolnay/syn/releases/tag/1.0.60
-            #[cfg(test)]
-            Expr::__TestExhaustive(_) => unimplemented!(),
-            #[cfg(not(test))]
+            SynType::Infer(..) | SynType::Macro(..) | SynType::Verbatim(..) => {
+                st::Format::Incomplete {
+                    debug: format!("unknown-type: {ty:?}"),
+                }
+            }
+            // Recommended way to test exhaustiveness without breaking API
+            #[cfg_attr(test, deny(non_exhaustive_omitted_patterns))]
             _ => st::Format::Incomplete {
                 debug: format!("Unknown other type"),
             },
