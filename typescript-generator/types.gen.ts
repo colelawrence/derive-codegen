@@ -1,63 +1,67 @@
 /**
  * `#[serde(transparent)]`
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 export type LocationID = string
 /**
  * `#[serde(transparent)]`
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 export function LocationID(inner: string): LocationID {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface Input {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type Input = {
   declarations: Array<InputDeclaration>;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+};
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function Input(inner: Input): Input {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface InputDeclaration {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type InputDeclaration = {
   id: string;
   id_location: LocationID;
-  /** `#[serde(flatten)]` */
-  attrs: Attrs;
   container_kind: ContainerFormat;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+} // flattened fields:
+/**
+ * `#[serde(flatten)]`
+ *
+ * Flattened from `.attrs`.
+ */
+& Attrs;
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function InputDeclaration(inner: InputDeclaration): InputDeclaration {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface Output {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type Output = {
   errors: Array<OutputMessage>;
   warnings: Array<OutputMessage>;
   files: Array<OutputFile>;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+};
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function Output(inner: Output): Output {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface OutputFile {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type OutputFile = {
   path: string;
   source: string;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+};
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function OutputFile(inner: OutputFile): OutputFile {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface OutputMessage {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type OutputMessage = {
   message: string;
   /** Labelled spans */
   labels: Array<[string, LocationID]>;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+};
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function OutputMessage(inner: OutputMessage): OutputMessage {
   return inner;
 }
@@ -66,52 +70,53 @@ export function OutputMessage(inner: OutputMessage): OutputMessage {
  * This is just the path respecting serde names into the container
  * It gets replaced by the knowledge
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 // deno-lint-ignore no-namespace
 export namespace Format {
+  export type ApplyFns<R> = {
+    // callbacks
+    Incomplete(inner: Incomplete["Incomplete"]): R,
+    /** The name of a container. */
+    TypeName(inner: TypeName["TypeName"]): R;
+    Unit(): R,
+    Bool(): R,
+    I8(): R,
+    I16(): R,
+    I32(): R,
+    I64(): R,
+    I128(): R,
+    ISIZE(): R,
+    U8(): R,
+    U16(): R,
+    U32(): R,
+    U64(): R,
+    U128(): R,
+    USIZE(): R,
+    F32(): R,
+    F64(): R,
+    Char(): R,
+    Str(): R,
+    Bytes(): R,
+    /** The format of `Option<T>`. */
+    Option(inner: Option["Option"]): R;
+    /** Never actually instantiated */
+    Never(): R,
+    /** A sequence, e.g. the format of `Vec<Foo>`. */
+    Seq(inner: Seq["Seq"]): R;
+    /** A map, e.g. the format of `BTreeMap<K, V>`. */
+    Map(inner: Map["Map"]): R,
+    /** A tuple, e.g. the format of `(Foo, Bar)`. */
+    Tuple(inner: Tuple["Tuple"]): R;
+    /**
+     * Alias for `(Foo, ... Foo)`.
+     * E.g. the format of `[Foo; N]`.
+     */
+    TupleArray(inner: TupleArray["TupleArray"]): R,
+  }
   /** Match helper for {@link Format} */
-  export function match<R>(
-    to: {
-      // callbacks
-      Incomplete(inner: Incomplete["Incomplete"]): R,
-      /** The name of a container. */
-      TypeName(inner: TypeName["TypeName"]): R;
-      Unit(): R,
-      Bool(): R,
-      I8(): R,
-      I16(): R,
-      I32(): R,
-      I64(): R,
-      I128(): R,
-      ISIZE(): R,
-      U8(): R,
-      U16(): R,
-      U32(): R,
-      U64(): R,
-      U128(): R,
-      USIZE(): R,
-      F32(): R,
-      F64(): R,
-      Char(): R,
-      Str(): R,
-      Bytes(): R,
-      /** The format of `Option<T>`. */
-      Option(inner: Option["Option"]): R;
-      /** Never actually instantiated */
-      Never(): R,
-      /** A sequence, e.g. the format of `Vec<Foo>`. */
-      Seq(inner: Seq["Seq"]): R;
-      /** A map, e.g. the format of `BTreeMap<K, V>`. */
-      Map(inner: Map["Map"]): R,
-      /** A tuple, e.g. the format of `(Foo, Bar)`. */
-      Tuple(inner: Tuple["Tuple"]): R;
-      /**
-       * Alias for `(Foo, ... Foo)`.
-       * E.g. the format of `[Foo; N]`.
-       */
-      TupleArray(inner: TupleArray["TupleArray"]): R,
-    },
+  export function apply<R>(
+    to: ApplyFns<R>,
   ): (input: Format) => R {
     return function _match(input): R {
       // if-else strings
@@ -148,10 +153,17 @@ export namespace Format {
       return _exhaust;
     }
   }
+  /** Match helper for {@link Format} */
+  export function match<R>(
+    input: Format,
+    to: ApplyFns<R>,
+  ): R {
+    return apply(to)(input)
+  }
   export type Incomplete = {
     Incomplete: {
       debug: string;
-    }
+    };
   }
   export function Incomplete(value: Incomplete["Incomplete"]): Incomplete {
     return { Incomplete: value }
@@ -270,7 +282,7 @@ export namespace Format {
     Map: {
       key: Format;
       value: Format;
-    }
+    };
   }
   /** A map, e.g. the format of `BTreeMap<K, V>`. */
   export function Map(value: Map["Map"]): Map {
@@ -293,7 +305,7 @@ export namespace Format {
     TupleArray: {
       content: Format;
       size: number;
-    }
+    };
   }
   /**
    * Alias for `(Foo, ... Foo)`.
@@ -308,7 +320,7 @@ export namespace Format {
  * This is just the path respecting serde names into the container
  * It gets replaced by the knowledge
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 export type Format =
   | Format.Incomplete
@@ -342,28 +354,29 @@ export type Format =
  * Serde-based serialization format for named "container" types.
  * In Rust, those are enums and structs.
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 // deno-lint-ignore no-namespace
 export namespace ContainerFormat {
+  export type ApplyFns<R> = {
+    // callbacks
+    /** An empty struct, e.g. `struct A`. */
+    UnitStruct(): R,
+    /** A struct with a single unnamed parameter, e.g. `struct A(u16)` */
+    NewTypeStruct(inner: NewTypeStruct["NewTypeStruct"]): R;
+    /** A struct with several unnamed parameters, e.g. `struct A(u16, u32)` */
+    TupleStruct(inner: TupleStruct["TupleStruct"]): R;
+    /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
+    Struct(inner: Struct["Struct"]): R,
+    /**
+     * An enum, that is, an enumeration of variants.
+     * Each variant has a unique name and index within the enum.
+     */
+    Enum(inner: Enum["Enum"]): R,
+  }
   /** Match helper for {@link ContainerFormat} */
-  export function match<R>(
-    to: {
-      // callbacks
-      /** An empty struct, e.g. `struct A`. */
-      UnitStruct(): R,
-      /** A struct with a single unnamed parameter, e.g. `struct A(u16)` */
-      NewTypeStruct(inner: NewTypeStruct["NewTypeStruct"]): R;
-      /** A struct with several unnamed parameters, e.g. `struct A(u16, u32)` */
-      TupleStruct(inner: TupleStruct["TupleStruct"]): R;
-      /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
-      Struct(inner: Struct["Struct"]): R,
-      /**
-       * An enum, that is, an enumeration of variants.
-       * Each variant has a unique name and index within the enum.
-       */
-      Enum(inner: Enum["Enum"]): R,
-    },
+  export function apply<R>(
+    to: ApplyFns<R>,
   ): (input: ContainerFormat) => R {
     return function _match(input): R {
       // if-else strings
@@ -377,6 +390,13 @@ export namespace ContainerFormat {
       const _exhaust: never = input;
       return _exhaust;
     }
+  }
+  /** Match helper for {@link ContainerFormat} */
+  export function match<R>(
+    input: ContainerFormat,
+    to: ApplyFns<R>,
+  ): R {
+    return apply(to)(input)
   }
   /** An empty struct, e.g. `struct A`. */
   export type UnitStruct = "UnitStruct"
@@ -406,7 +426,7 @@ export namespace ContainerFormat {
   export type Struct = {
     Struct: {
       fields: Array<NamedField>;
-    }
+    };
   }
   /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
   export function Struct(value: Struct["Struct"]): Struct {
@@ -420,7 +440,7 @@ export namespace ContainerFormat {
     Enum: {
       repr: EnumRepresentation;
       variants: Array<NamedVariant>;
-    }
+    };
   }
   /**
    * An enum, that is, an enumeration of variants.
@@ -434,7 +454,7 @@ export namespace ContainerFormat {
  * Serde-based serialization format for named "container" types.
  * In Rust, those are enums and structs.
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 export type ContainerFormat =
   | ContainerFormat.UnitStruct
@@ -442,50 +462,59 @@ export type ContainerFormat =
   | ContainerFormat.TupleStruct
   | ContainerFormat.Struct
   | ContainerFormat.Enum
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface NamedVariant {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type NamedVariant = {
   id: string;
   id_location: LocationID;
-  /** `#[serde(flatten)]` */
-  attrs: Attrs;
   variant_format: VariantFormat;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+} // flattened fields:
+/**
+ * `#[serde(flatten)]`
+ *
+ * Flattened from `.attrs`.
+ */
+& Attrs;
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function NamedVariant(inner: NamedVariant): NamedVariant {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface NamedField {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type NamedField = {
   id: string;
   id_location: LocationID;
-  /** `#[serde(flatten)]` */
-  attrs: Attrs;
   format: Format;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+} // flattened fields:
+/**
+ * `#[serde(flatten)]`
+ *
+ * Flattened from `.attrs`.
+ */
+& Attrs;
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function NamedField(inner: NamedField): NamedField {
   return inner;
 }
 /**
  * Description of a variant in an enum.
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 // deno-lint-ignore no-namespace
 export namespace VariantFormat {
+  export type ApplyFns<R> = {
+    // callbacks
+    /** A variant without parameters, e.g. `A` in `enum X { A }` */
+    Unit(): R,
+    /** A variant with a single unnamed parameter, e.g. `A` in `enum X { A(u16) }` */
+    NewType(inner: NewType["NewType"]): R;
+    /** A struct with several unnamed parameters, e.g. `A` in `enum X { A(u16, u32) }` */
+    Tuple(inner: Tuple["Tuple"]): R;
+    /** A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }` */
+    Struct(inner: Struct["Struct"]): R,
+  }
   /** Match helper for {@link VariantFormat} */
-  export function match<R>(
-    to: {
-      // callbacks
-      /** A variant without parameters, e.g. `A` in `enum X { A }` */
-      Unit(): R,
-      /** A variant with a single unnamed parameter, e.g. `A` in `enum X { A(u16) }` */
-      NewType(inner: NewType["NewType"]): R;
-      /** A struct with several unnamed parameters, e.g. `A` in `enum X { A(u16, u32) }` */
-      Tuple(inner: Tuple["Tuple"]): R;
-      /** A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }` */
-      Struct(inner: Struct["Struct"]): R,
-    },
+  export function apply<R>(
+    to: ApplyFns<R>,
   ): (input: VariantFormat) => R {
     return function _match(input): R {
       // if-else strings
@@ -498,6 +527,13 @@ export namespace VariantFormat {
       const _exhaust: never = input;
       return _exhaust;
     }
+  }
+  /** Match helper for {@link VariantFormat} */
+  export function match<R>(
+    input: VariantFormat,
+    to: ApplyFns<R>,
+  ): R {
+    return apply(to)(input)
   }
   /** A variant without parameters, e.g. `A` in `enum X { A }` */
   export type Unit = "Unit"
@@ -527,7 +563,7 @@ export namespace VariantFormat {
   export type Struct = {
     Struct: {
       fields: Array<NamedField>;
-    }
+    };
   }
   /** A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }` */
   export function Struct(value: Struct["Struct"]): Struct {
@@ -537,15 +573,15 @@ export namespace VariantFormat {
 /**
  * Description of a variant in an enum.
  *
- * `#[codegen(tags = "herenow-generator-internal")]`
+ * `#[codegen(tags = "derive-codegen-internal")]`
  */
 export type VariantFormat =
   | VariantFormat.Unit
   | VariantFormat.NewType
   | VariantFormat.Tuple
   | VariantFormat.Struct
-/** `#[codegen(tags = "herenow-generator-internal")]` */
-export interface Attrs {
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type Attrs = {
   /**
    * Documentation comments like this one.
    * Future idea: Pass in tokens with links to other types.
@@ -575,31 +611,32 @@ export interface Attrs {
    * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
    */
   codegen_flags?: Record<string, LocationID> | null | undefined;
-}
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+};
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export function Attrs(inner: Attrs): Attrs {
   return inner;
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 // deno-lint-ignore no-namespace
 export namespace EnumRepresentation {
+  export type ApplyFns<R> = {
+    // callbacks
+    /**
+     * The default
+     * e.g `{ User: { id: 1200, name: "Smithy" } }`
+     */
+    External(): R,
+    /** e.g `{ id: 1200, name: "Smithy" }` */
+    Untagged(): R,
+    /**
+     * e.g `{ type: "User", id: 1200, name: "Smithy" }`
+     * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }`
+     */
+    Tagged(inner: Tagged["Tagged"]): R,
+  }
   /** Match helper for {@link EnumRepresentation} */
-  export function match<R>(
-    to: {
-      // callbacks
-      /**
-       * The default
-       * e.g `{ User: { id: 1200, name: "Smithy" } }`
-       */
-      External(): R,
-      /** e.g `{ id: 1200, name: "Smithy" }` */
-      Untagged(): R,
-      /**
-       * e.g `{ type: "User", id: 1200, name: "Smithy" }`
-       * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }`
-       */
-      Tagged(inner: Tagged["Tagged"]): R,
-    },
+  export function apply<R>(
+    to: ApplyFns<R>,
   ): (input: EnumRepresentation) => R {
     return function _match(input): R {
       // if-else strings
@@ -611,6 +648,13 @@ export namespace EnumRepresentation {
       const _exhaust: never = input;
       return _exhaust;
     }
+  }
+  /** Match helper for {@link EnumRepresentation} */
+  export function match<R>(
+    input: EnumRepresentation,
+    to: ApplyFns<R>,
+  ): R {
+    return apply(to)(input)
   }
   /**
    * The default
@@ -640,7 +684,7 @@ export namespace EnumRepresentation {
       tag_location: LocationID;
       content?: string | undefined | null | null | undefined;
       content_location?: LocationID | undefined | null | null | undefined;
-    }
+    };
   }
   /**
    * e.g `{ type: "User", id: 1200, name: "Smithy" }`
@@ -650,7 +694,7 @@ export namespace EnumRepresentation {
     return { Tagged: value }
   }
 }
-/** `#[codegen(tags = "herenow-generator-internal")]` */
+/** `#[codegen(tags = "derive-codegen-internal")]` */
 export type EnumRepresentation =
   | EnumRepresentation.External
   | EnumRepresentation.Untagged

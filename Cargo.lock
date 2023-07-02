@@ -77,7 +77,6 @@ dependencies = [
  "i-codegen-derive",
  "i-codegen-types",
  "insta",
- "linkme",
  "rayon",
  "serde",
  "serde_json",

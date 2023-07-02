@@ -1,28 +1,27 @@
 import { Code } from "./Code.ts";
-import { Input, Output, NamedField, Format, Attrs } from "./Input.ts";
-import { match } from "./match.ts";
+import { gen } from "./gen.ts";
 
-function convert(input: Input): Output {
+function convert(input: gen.Input): gen.Output {
   const generated = new Code();
   console.error("Number of declarations: ", input.declarations.length);
   for (const decl of input.declarations) {
     const $decl = new Code();
     const docs = Code.docString(decl);
-    match(decl.container_kind)
-      .Struct(({ fields }) => {
+
+    gen.ContainerFormat.match(decl.container_kind, {
+      Struct({ fields }) {
         const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export interface ${structIdent} {`;
-        typeFields$($decl.indented(), fields);
-        $decl.add`}`;
+        $decl.add`export type ${structIdent} = {`;
+        typeFieldsFinish$($decl, fields);
         // create
         $decl.lines.push(...docs);
         $decl.add`export function ${structIdent}(inner: ${structIdent}): ${structIdent} {`;
         $decl.ad1`return inner;`;
         $decl.add`}`;
-      })
-      .Enum(({ repr, variants }) => {
+      },
+      Enum({ repr, variants }) {
         const enumIdent = ident(decl.id);
         const $nsMatchToObj = new Code(["// callbacks"]);
         const $nsMatchIfStrs = new Code(["// if-else strings"]);
@@ -31,9 +30,12 @@ function convert(input: Input): Output {
           `if (typeof input !== "object" || input == null) throw new TypeError("Unexpected non-object for input");`,
         ]);
         const $ns = new Code([
+          `export type ApplyFns<R> = {`,
+          $nsMatchToObj,
+          `}`,
           `/** Match helper for {@link ${enumIdent}} */`,
-          `export function match<R>(`,
-          new Code([`to: {`, $nsMatchToObj, `},`]),
+          `export function apply<R>(`,
+          new Code([`to: ApplyFns<R>,`]),
           `): (input: ${enumIdent}) => R {`,
           new Code([
             `return function _match(input): R {`,
@@ -42,6 +44,12 @@ function convert(input: Input): Output {
             new Code([`const _exhaust: never = input;`, `return _exhaust;`]),
             `}`,
           ]),
+          `}`,
+          `/** Match helper for {@link ${enumIdent}} */`,
+          `export function match<R>(`,
+          new Code([`input: ${enumIdent},`, `to: ApplyFns<R>,`]),
+          `): R {`,
+          new Code([`return apply(to)(input)`]),
           `}`,
         ]);
         const typeCode = new Code([
@@ -64,8 +72,8 @@ function convert(input: Input): Output {
           const variantIdentRef = `${enumIdent}.${variantIdent}`;
           typeCode.ad1`| ${variantIdentRef}`;
           const variantDocs = Code.docString(variant);
-          match(variant.variant_format)
-            .NewType((format) => {
+          gen.VariantFormat.match(variant.variant_format, {
+            NewType(format) {
               const newTypeTs = createFormat(format);
               // type
               $ns.lines.push(...variantDocs);
@@ -91,8 +99,8 @@ function convert(input: Input): Output {
               )} in input) return to.${variantNameField}(input[${namedStr(
                 variant
               )}]);`;
-            })
-            .Tuple((formats) => {
+            },
+            Tuple(formats) {
               const formatTsList = tupleFormats(formats);
               const vnStr = namedStr(variant);
               const innerTypeRef = `[${formatTsList
@@ -114,8 +122,8 @@ function convert(input: Input): Output {
               $nsMatchToObj.lines.push(...variantDocs);
               $nsMatchToObj.add`${variantIdent}(inner: ${innerTypeRef}): R,`;
               $nsMatchIfObjs.add`if (${vnStr} in input) return to.${variantIdent}(input[${vnStr}]);`;
-            })
-            .Unit(() => {
+            },
+            Unit() {
               // type
               $ns.lines.push(...variantDocs);
               $ns.add`export type ${variantIdent} = ${namedStr(variant)}`;
@@ -130,16 +138,15 @@ function convert(input: Input): Output {
               $nsMatchIfStrs.add`if (input === ${namedStr(
                 variant
               )}) return to.${variantIdent}();`;
-            })
-            .Struct(({ fields }) => {
+            },
+            Struct({ fields }) {
               const innerTypeRef = `${variantIdent}[${namedStr(variant)}]`;
               // type
               $ns.lines.push(...variantDocs);
               $ns.add`export type ${variantIdent} = {`;
               $ns.scope(($$) => {
                 $$.add`${variantNameField}: {`;
-                typeFields$($$.indented(), fields);
-                $$.add`}`;
+                typeFieldsFinish$($$, fields);
               });
               $ns.add`}`;
               // create
@@ -155,13 +162,13 @@ function convert(input: Input): Output {
               )} in input) return to.${variantIdent}(input[${namedStr(
                 variant
               )}]);`;
-            })
-            .$();
+            },
+          });
         }
 
         $decl.lines.push(...typeCode.lines);
-      })
-      .NewTypeStruct((format) => {
+      },
+      NewTypeStruct(format) {
         const structIdent = ident(decl.id);
         const newTypeFormat = createFormat(format);
         // type
@@ -182,8 +189,8 @@ function convert(input: Input): Output {
           $decl.ad1`return [inner];`;
         }
         $decl.add`}`;
-      })
-      .TupleStruct((formats) => {
+      },
+      TupleStruct(formats) {
         const formatTsList = tupleFormats(formats);
         const structIdent = ident(decl.id);
         // type
@@ -198,8 +205,8 @@ function convert(input: Input): Output {
           .join(", ")}): ${structIdent} {`;
         $decl.ad1`return [${formatTsList.map((f) => f.id).join(", ")}];`;
         $decl.add`}`;
-      })
-      .UnitStruct(() => {
+      },
+      UnitStruct() {
         const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
@@ -209,8 +216,9 @@ function convert(input: Input): Output {
         $decl.add`export function ${structIdent}(): ${structIdent} {`;
         $decl.ad1`return {};`;
         $decl.add`}`;
-      })
-      .$();
+      },
+    });
+
     generated.lines.push(...$decl.lines);
   }
   return {
@@ -225,9 +233,24 @@ function convert(input: Input): Output {
   };
 }
 
+function splitByFlattened<T extends gen.Attrs>(items: T[]) {
+  const flattened: T[] = [];
+  const fields: T[] = [];
+  for (const item of items) {
+    if (item.serde_flags?.flatten) {
+      flattened.push(item);
+    } else {
+      fields.push(item);
+    }
+  }
+  return { flattened, fields };
+}
+
 /** Only for the types */
-function typeFields$($: Code, fields: NamedField[]) {
-  for (const field of fields) {
+function typeFieldsFinish$(root: Code, fields: gen.NamedField[]) {
+  const $ = root.indented();
+  const split = splitByFlattened(fields);
+  for (const field of split.fields) {
     const { src, optional } = createFormat(field.format);
     const isOptional =
       optional ||
@@ -237,9 +260,25 @@ function typeFields$($: Code, fields: NamedField[]) {
       isOptional && " | null | undefined"
     };`;
   }
+
+  if (split.flattened.length === 0) {
+    root.add`};`;
+    return;
+  }
+  root.add`} // flattened fields:`;
+  for (const flattened of split.flattened) {
+    root.addDocString(flattened, `Flattened from \`.${flattened.id}\`.`);
+    const format = createFormat(flattened.format);
+    if (format.optional) {
+      root.add`& Partial<${format.src}>`;
+    } else {
+      root.add`& ${format.src}`;
+    }
+  }
+  root.lastLine += ";";
 }
 
-function tupleFormats(formats: Format[]) {
+function tupleFormats(formats: gen.Format[]) {
   const aCp = "a".codePointAt(0)!;
   return formats.map((f, idx) => ({
     fmt: createFormat(f),
@@ -247,66 +286,67 @@ function tupleFormats(formats: Format[]) {
   }));
 }
 
-function createFormat(format: Format): { src: string; optional?: boolean } {
-  const num = () => ({ src: "number" });
-  if (!format) throw new Error("format not specified");
+const num = () => ({ src: "number" });
 
-  return match(format)
-    .TypeName((value) => ({ src: ident(value) }))
-    .I8(num)
-    .I16(num)
-    .I32(num)
-    .I64(num)
-    .I128(num)
-    .ISIZE(num)
-    .U8(num)
-    .U16(num)
-    .U32(num)
-    .U64(num)
-    .U128(num)
-    .USIZE(num)
-    .F32(num)
-    .F64(num)
-    .Bool(() => ({ src: "boolean" }))
-    .Bytes(() => ({ src: "/* bytes? */ string" }))
-    .Never(() => ({ src: "never" }))
-    .Char(() => ({ src: "/* char */ string" }))
-    .Map(({ key, value }) => ({
-      src: `Record<${createFormat(key).src}, ${createFormat(value).src}>`,
-    }))
-    .Unit(() => ({ src: "/* unit */ null" }))
-    .Option((format) => {
-      const inner = createFormat(format);
-      if (inner.optional) return inner;
-      return {
-        src: `${inner.src} | undefined | null`,
-        optional: true,
-      };
-    })
-    .Incomplete(({ debug }) => ({ src: `/* Incomplete: ${debug} */ unknown` }))
-    .Seq((seq) => ({
-      src: `Array<${createFormat(seq).src}>`,
-    }))
-    .Tuple((tuple) => ({
-      src: `[${tuple.map((tup) => createFormat(tup).src).join(", ")}]`,
-    }))
-    .TupleArray(({ content, size }) => ({
-      src: `[<${new Array(size).fill(createFormat(content).src).join(", ")}]`,
-    }))
-    .Str(() => ({ src: "string" }))
-    .$();
-}
+const createFormat: (format: gen.Format) => {
+  src: string;
+  optional?: boolean;
+} = gen.Format.apply({
+  TypeName: (value) => ({ src: ident(value) }),
+  I8: num,
+  I16: num,
+  I32: num,
+  I64: num,
+  I128: num,
+  ISIZE: num,
+  U8: num,
+  U16: num,
+  U32: num,
+  U64: num,
+  U128: num,
+  USIZE: num,
+  F32: num,
+  F64: num,
+  Bool: () => ({ src: "boolean" }),
+  Bytes: () => ({ src: "/* bytes? */ string" }),
+  Never: () => ({ src: "never" }),
+  Char: () => ({ src: "/* char */ string" }),
+  Map: ({ key, value }) => ({
+    src: `Record<${createFormat(key).src}, ${createFormat(value).src}>`,
+  }),
+  Unit: () => ({ src: "/* unit */ null" }),
+  Option: (format) => {
+    const inner = createFormat(format);
+    if (inner.optional) return inner;
+    return {
+      src: `${inner.src} | undefined | null`,
+      optional: true,
+    };
+  },
+  Incomplete: ({ debug }) => ({ src: `/* Incomplete: ${debug} */ unknown` }),
+  Seq: (seq) => ({
+    src: `Array<${createFormat(seq).src}>`,
+  }),
+  Tuple: (tuple) => ({
+    src: `[${tuple.map((tup) => createFormat(tup).src).join(", ")}]`,
+  }),
+  TupleArray: ({ content, size }) => ({
+    src: `[<${new Array(size).fill(createFormat(content).src).join(", ")}]`,
+  }),
+  Str: () => ({ src: "string" }),
+});
 
 function ident(id: string): string {
   return id.replace(/[^a-zA-Z0-9\$\_]/g, "$").replace(/^(\d)/, "$$1");
 }
 
-function namedField(named: { id: string } & Attrs): string {
+function namedField(named: { id: string } & gen.Attrs): string {
   const nam = named.serde_attrs?.["rename"]?.[0] ?? named.id;
   if (/^[\w$][\w\d$]*$/.test(nam)) return nam;
   else return JSON.stringify(nam);
 }
-function namedStr(named: { id: string } & Attrs): string {
+
+function namedStr(named: { id: string } & gen.Attrs): string {
   const nam = named.serde_attrs?.["rename"]?.[0] ?? named.id;
   return JSON.stringify(nam);
 }

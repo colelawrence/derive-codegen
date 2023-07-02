@@ -14,5 +14,5 @@ documentation.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 i-codegen-types.workspace = true
-linkme.workspace = true
+linkme = "0.3"
 serde-reflection = "0.3.6"

@@ -1,9 +1,9 @@
-import { Attrs } from "./Input.ts";
+import { gen } from "./gen.ts";
 
 export class Code {
   indentation = "  " + d`$$`;
   constructor(public readonly lines: (Code | string)[] = []) {}
-  static docString(docs: Attrs): string[] {
+  static docString(docs: gen.Attrs, extraLine?: string): string[] {
     let found = "";
     if (docs.rust_docs) found += docs.rust_docs;
     if (docs.serde_attrs || docs.serde_flags) {
@@ -31,6 +31,10 @@ export class Code {
         ")]`";
     }
 
+    if (extraLine) {
+      found += `\n\n${extraLine}`;
+    }
+
     found = found.trim();
 
     if (found) {
@@ -48,12 +52,20 @@ export class Code {
       return [];
     }
   }
+  get lastLine(): string {
+    const last = this.lines[this.lines.length - 1]
+    if (typeof last !== "string") throw new Error("Expected last line to be a string")
+    return last
+  }
+  set lastLine(value: string) {
+    this.lines[this.lines.length - 1] = value
+  }
   add(arr: TemplateStringsArray, ...args: Args) {
     this.lines.push(raw(arr, ...args));
   }
-  addDocString(docs: Attrs | undefined | null) {
+  addDocString(docs: gen.Attrs | undefined | null, extraLine?: string) {
     if (!docs) return;
-    this.lines.push(...Code.docString(docs));
+    this.lines.push(...Code.docString(docs, extraLine));
   }
   ad1(arr: TemplateStringsArray, ...args: Args) {
     const last = this.lines.findLast(() => true);

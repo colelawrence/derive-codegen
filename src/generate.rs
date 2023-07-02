@@ -4,6 +4,8 @@ use serde::{self, Deserialize, Serialize};
 use st::TypeRoot;
 use std::cell::{Ref, RefCell};
 use std::io::Write;
+use std::path::PathBuf;
+use std::process::Command;
 use std::{
     borrow::Cow,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -13,17 +15,17 @@ use std::{
 
 #[derive(CodegenInternal, Serialize, Deserialize, Clone, Debug)]
 #[serde(transparent)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct LocationID(String);
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct Input {
     declarations: Vec<InputDeclaration>,
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct InputDeclaration {
     id: String,
     id_location: LocationID,
@@ -33,7 +35,7 @@ struct InputDeclaration {
 }
 
 #[derive(Deserialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct Output {
     errors: Vec<OutputMessage>,
     warnings: Vec<OutputMessage>,
@@ -41,14 +43,14 @@ struct Output {
 }
 
 #[derive(Deserialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct OutputFile {
     path: String,
     source: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct OutputMessage {
     message: String,
     /// Labelled spans
@@ -59,7 +61,7 @@ struct OutputMessage {
 /// This is just the path respecting serde names into the container
 /// It gets replaced by the knowledge
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 enum Format {
     Incomplete {
         debug: String,
@@ -113,7 +115,7 @@ enum Format {
 /// Serde-based serialization format for named "container" types.
 /// In Rust, those are enums and structs.
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 enum ContainerFormat {
     /// An empty struct, e.g. `struct A`.
     UnitStruct,
@@ -132,7 +134,7 @@ enum ContainerFormat {
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct NamedVariant {
     id: String,
     id_location: LocationID,
@@ -142,7 +144,7 @@ struct NamedVariant {
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct NamedField {
     id: String,
     id_location: LocationID,
@@ -152,7 +154,7 @@ struct NamedField {
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 /// Description of a variant in an enum.
 enum VariantFormat {
     /// A variant without parameters, e.g. `A` in `enum X { A }`
@@ -166,7 +168,7 @@ enum VariantFormat {
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 struct Attrs {
     /// Documentation comments like this one.
     /// Future idea: Pass in tokens with links to other types.
@@ -186,7 +188,7 @@ struct Attrs {
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
-#[codegen(tags = "herenow-generator-internal")]
+#[codegen(tags = "derive-codegen-internal")]
 enum EnumRepresentation {
     /// The default
     /// e.g `{ User: { id: 1200, name: "Smithy" } }`
@@ -467,70 +469,157 @@ impl TypeRootConverter {
         }
     }
 }
-pub enum GenerationCommand<'a> {
+
+enum GenCommand<'a> {
     PipeInto(&'a mut std::process::Command),
     Arg(&'a mut std::process::Command),
 }
 
-#[track_caller]
-pub fn generate_for_tag(tag: &str, command: GenerationCommand<'_>) {
-    let tys = i_codegen_code::get_types_by_tag(tag);
-    let inputs = crate::generate::create_input_json_from_type_roots(tys);
-    match command {
-        GenerationCommand::PipeInto(mut cmd) => {
-            let cmd_str = format!("{cmd:?}");
-            let mut child = cmd
-                .stdout(std::process::Stdio::piped())
-                .stdin(std::process::Stdio::piped())
-                .spawn()
-                .map_err(|err| format!("Failure executing `{cmd_str}`: {err:?} "))
-                .expect("spawning process");
+#[derive(Clone)]
+pub struct Generation {
+    tags: Vec<String>,
+}
 
-            child
-                .stdin
-                .as_mut()
-                .unwrap()
-                .write_all(&serde_json::to_vec(&inputs).unwrap())
-                .unwrap();
+pub struct GenerationCmd<'a> {
+    selection: &'a Generation,
+    command: GenCommand<'a>,
+    output_path: Option<PathBuf>,
+}
 
-            let output = child.wait_with_output().expect("failed to wait on child");
-
-            dbg!(output);
+impl Generation {
+    pub fn for_tag(tag: &str) -> Self {
+        Generation {
+            tags: vec![tag.to_string()],
         }
-        GenerationCommand::Arg(mut cmd) => {
-            let cmd_str = format!("{cmd:?} <input-json>");
-            let mut child = cmd
-                .arg(&serde_json::to_string(&inputs).unwrap())
-                .stdout(std::process::Stdio::piped())
-                .spawn()
-                .map_err(|err| format!("Failure executing `{cmd_str}`: {err:?} "))
-                .expect("spawning process");
+    }
 
-            let stdout_output = child.wait_with_output().expect("failed to wait on child");
-            let stdout_str = String::from_utf8_lossy(&stdout_output.stdout);
-            let output = serde_json::from_str::<Output>(&stdout_str)
-                .map_err(|err| {
-                    format!("Failed to parsed output as JSON of output files: {err:?}, from:\n{stdout_str}")
-                })
-                .expect("parsing output");
+    pub fn include_tag(&mut self, tag: impl Into<String>) -> &mut Self {
+        self.tags.push(tag.into());
+        self
+    }
 
-            for err in output.errors {
-                eprintln!("Output error:\n{err:?}")
-            }
-
-            for OutputFile { path, source } in output.files {
-                write!(
-                    &mut std::fs::File::create(path).expect("open file from output"),
-                    "{}",
-                    source
-                );
-            }
+    pub fn pipe_into<'a>(&'a self, command: &'a mut Command) -> GenerationCmd<'a> {
+        GenerationCmd {
+            command: GenCommand::PipeInto(command),
+            output_path: None,
+            selection: self,
         }
+    }
+
+    pub fn as_arg_of<'a>(&'a self, command: &'a mut Command) -> GenerationCmd<'a> {
+        GenerationCmd {
+            command: GenCommand::Arg(command),
+            output_path: None,
+            selection: self,
+        }
+    }
+
+    pub fn to_input_json_pretty(&self) -> String {
+        serde_json::to_string_pretty(&create_input_from_selection(self)).unwrap()
+    }
+
+    pub fn to_input_json(&self) -> String {
+        serde_json::to_string(&create_input_from_selection(self)).unwrap()
     }
 }
 
-pub fn create_input_json_from_type_roots(roots: Vec<st::TypeRoot>) -> serde_json::Value {
-    let type_root_converters: HashMap<String, TypeRootConverter> = roots
+impl<'a> GenerationCmd<'a> {
+    pub fn with_output_path<P: Into<PathBuf>>(&mut self, path: P) -> &mut Self {
+        self.output_path = Some(path.into());
+        self
+    }
+
+    #[track_caller]
+    pub fn print(&mut self) {
+        let output = self.generate();
+        for err in &output.warnings {
+            eprintln!("Output warning:\n{err:?}")
+        }
+        for err in &output.errors {
+            eprintln!("Output error:\n{err:?}")
+        }
+
+        let relative_to = self.output_path.clone().unwrap_or_else(|| ".".into());
+
+        for output_file in output.files {
+            let write_path = relative_to.join(output_file.path);
+            println!("\x1b[48:2:255:165:0m{}\x1b[0m", write_path.display());
+            println!("{}", output_file.source);
+        }
+    }
+
+    #[track_caller]
+    pub fn write(&mut self) {
+        let output = self.generate();
+        for err in output.warnings {
+            eprintln!("Output warning:\n{err:?}")
+        }
+        for err in output.errors {
+            eprintln!("Output error:\n{err:?}")
+        }
+
+        let relative_to = self.output_path.clone().unwrap_or_else(|| ".".into());
+
+        for output_file in output.files {
+            let write_path = relative_to.join(output_file.path);
+            if let Some(parent) = write_path.parent() {
+                std::fs::create_dir_all(parent).expect("creating missing directories");
+            }
+
+            let mut file = std::fs::File::create(write_path).expect("created file");
+            write!(&mut file, "{}", output_file.source).expect("wrote file");
+        }
+    }
+
+    #[track_caller]
+    fn generate(&mut self) -> Output {
+        let inputs = create_input_from_selection(&self.selection);
+        let stdout_output = match self.command {
+            GenCommand::PipeInto(ref mut cmd) => {
+                let cmd_str = format!("{cmd:?}");
+                let mut child = cmd
+                    .stdout(std::process::Stdio::piped())
+                    .stdin(std::process::Stdio::piped())
+                    .spawn()
+                    .map_err(|err| format!("Failure executing `{cmd_str}`: {err:?} "))
+                    .expect("spawning process");
+
+                child
+                    .stdin
+                    .as_mut()
+                    .unwrap()
+                    .write_all(&serde_json::to_vec(&inputs).unwrap())
+                    .unwrap();
+
+                child.wait_with_output().expect("failed to wait on child")
+            }
+            GenCommand::Arg(ref mut cmd) => {
+                let cmd_str = format!("{cmd:?} <input-json>");
+                let mut child = cmd
+                    .arg(&serde_json::to_string(&inputs).unwrap())
+                    .stdout(std::process::Stdio::piped())
+                    .spawn()
+                    .map_err(|err| format!("Failure executing `{cmd_str}`: {err:?} "))
+                    .expect("spawning process");
+
+                child.wait_with_output().expect("failed to wait on child")
+            }
+        };
+
+        let stdout_str = String::from_utf8_lossy(&stdout_output.stdout);
+        serde_json::from_str::<Output>(&stdout_str)
+            .map_err(|err| {
+                format!(
+                    "Failed to parsed output as JSON of output files: {err:?}, from:\n{stdout_str}"
+                )
+            })
+            .expect("parsing output")
+    }
+}
+
+fn create_input_from_selection(selection: &Generation) -> Input {
+    let tys = i_codegen_code::get_types_by_tags(&selection.tags);
+    let type_root_converters: HashMap<String, TypeRootConverter> = tys
         .iter()
         .map(|root| root.file.clone())
         .collect::<HashSet<_>>()
@@ -566,7 +655,7 @@ pub fn create_input_json_from_type_roots(roots: Vec<st::TypeRoot>) -> serde_json
         })
         .collect();
 
-    let declarations = roots
+    let declarations = tys
         .into_par_iter()
         .flat_map(
             |TypeRoot {
@@ -599,5 +688,5 @@ pub fn create_input_json_from_type_roots(roots: Vec<st::TypeRoot>) -> serde_json
         })
         .collect::<Vec<InputDeclaration>>();
 
-    serde_json::to_value(&Input { declarations }).unwrap()
+    Input { declarations }
 }

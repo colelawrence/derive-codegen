@@ -1,12 +1,12 @@
 pub use linkme;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_reflection::{self, ContainerFormat, Tracer, TracerConfig};
 
 pub mod utils;
 
 pub struct Context {
-    tag: String,
+    tags: BTreeSet<String>,
     tracer: Option<(
         serde_reflection::Tracer,
         Vec<(String, i_codegen_types::TypeRoot)>,
@@ -25,11 +25,18 @@ impl Context {
         tags: &[&str],
     ) -> () {
         if tags.is_empty() {
-            if !self.tag.is_empty() {
+            if !self.tags.is_empty() {
                 return;
             }
         } else {
-            if !tags.contains(&self.tag.as_str()) {
+            let mut found = false;
+            for tag in tags {
+                if self.tags.contains(*tag) {
+                    found = true;
+                    continue;
+                }
+            }
+            if !found {
                 return;
             }
         }
@@ -81,9 +88,9 @@ impl Context {
 pub static CODEGEN_ITEMS: [fn(&mut Context)] = [..];
 
 #[track_caller]
-pub fn get_types_by_tag(tag: &str) -> Vec<i_codegen_types::TypeRoot> {
+pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
     let mut context = Context {
-        tag: tag.to_string(),
+        tags: tags.into_iter().cloned().map(String::from).collect(),
         errors: Vec::new(),
         tracer: None,
         // tracer: Some((Tracer::new(TracerConfig::default()), Vec::new())),
@@ -106,7 +113,7 @@ pub fn get_types_by_tag(tag: &str) -> Vec<i_codegen_types::TypeRoot> {
         errors,
         untraced: mut type_roots,
         tracer,
-        tag: _,
+        tags: _,
     } = context;
 
     if let Some((tracer, merge)) = tracer {
