@@ -1,4 +1,4 @@
-use std::process::Command;
+
 
 use i_codegen_derive::CodegenInternal as Codegen;
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,7 @@ struct ATuplePartiallyNamed(#[serde(rename = "x")] usize, #[serde(rename = "y")]
 
 #[cfg(test)]
 mod test_sers {
-    use super::ATuplePartiallyNamed;
+    
 
     #[test]
     fn test_tuple_partially_named() {

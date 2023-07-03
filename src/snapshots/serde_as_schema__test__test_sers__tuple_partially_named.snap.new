@@ -1,6 +1,0 @@
----
-source: src/test.rs
-assertion_line: 52
-expression: "serde_json::to_string(&ATuplePartiallyNamed(20, 400)).unwrap()"
----
-[20,400]

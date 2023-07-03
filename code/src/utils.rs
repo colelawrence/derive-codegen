@@ -1,18 +1,22 @@
 pub fn parse_span<S: std::fmt::Debug + Copy>(
     span: S,
 ) -> std::result::Result<(usize, usize), String> {
-    let mut parser = SpanDebugParser { during: None };
+    let mut parser = SpanDebugParser {
+        during: None,
+        curr: '\0',
+    };
     match parser.parse(span) {
         Some(found) => Ok(found),
         None => Err(format!(
-            "failed to parse bytes: {:?}, {:?}",
-            parser.during, span
+            "failed to parse bytes of span ({:?}) error during: {:?}, last char: {:?}",
+            span, parser.during, parser.curr,
         )),
     }
 }
 
 struct SpanDebugParser {
     // idx: usize,
+    curr: char,
     during: Option<&'static str>,
 }
 
@@ -23,24 +27,23 @@ impl SpanDebugParser {
         self.during = Some("start");
         let dbg_span = format!("{span:?}");
         let mut chs = dbg_span.chars().peekable();
-        let mut curr = ' ';
         self.during = Some("skipping opener");
         loop {
-            curr = chs.next()?;
-            if curr == '(' {
+            self.curr = chs.next()?;
+            if self.curr == '(' {
                 break;
             }
         }
         self.during = Some("parsing first byte");
         let mut start_byte = String::new();
         let start_at = loop {
-            curr = chs.next()?;
-            if curr == '.' {
+            self.curr = chs.next()?;
+            if self.curr == '.' {
                 self.during = Some("found .");
                 break start_byte.parse::<usize>().ok()?;
             }
-            if let '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' = curr {
-                start_byte.push(curr);
+            if let '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' = self.curr {
+                start_byte.push(self.curr);
             } else {
                 self.during = Some("start_byte non-digit");
                 return None;
@@ -54,13 +57,13 @@ impl SpanDebugParser {
         self.during = Some("parsing second byte index");
         let mut end_byte = String::new();
         let end_at = loop {
-            curr = chs.next()?;
-            if curr == ')' {
+            self.curr = chs.next()?;
+            if self.curr == ')' {
                 self.during = Some("parsing end bytes");
                 break end_byte.parse::<usize>().ok()?;
             }
-            if let '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' = curr {
-                end_byte.push(curr);
+            if let '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' = self.curr {
+                end_byte.push(self.curr);
             } else {
                 self.during = Some("end_byte non-digit");
                 return None;

@@ -2,13 +2,12 @@ use i_codegen_types as st;
 use rayon::prelude::*;
 use serde::{self, Deserialize, Serialize};
 use st::TypeRoot;
-use std::cell::{Ref, RefCell};
+
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use std::{
-    borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Debug,
     io::BufReader,
 };
@@ -212,7 +211,11 @@ struct TypeRootConverter {
     file_name: String,
     line_number_override: Option<u32>,
     newlines: Vec<usize>,
+    // TODO: is this crlf useful for something?
+    #[allow(unused)]
+    is_crlf: bool,
 }
+
 impl TypeRootConverter {
     fn get_ln_col(&self, byte: usize) -> (usize, usize) {
         let index = match self.newlines.binary_search(&byte) {
@@ -220,7 +223,7 @@ impl TypeRootConverter {
             Err(insert_at) => insert_at - 1,
         };
         if index >= self.newlines.len() || index == 0 {
-            return (index, 0);
+            (index, 0)
         } else {
             let newline_byte_offset = *self.newlines.get(index - 1).expect("in bounds");
             if byte < newline_byte_offset {
@@ -275,7 +278,7 @@ impl TypeRootConverter {
                 serde_attrs: {
                     let mut bt = BTreeMap::<String, (String, LocationID)>::new();
                     for st::Spanned {
-                        bytes,
+                        bytes: _,
                         value: (key, value),
                     } in serde_attrs
                     {
@@ -294,7 +297,7 @@ impl TypeRootConverter {
                 codegen_attrs: {
                     let mut bt = BTreeMap::<String, (String, LocationID)>::new();
                     for st::Spanned {
-                        bytes,
+                        bytes: _,
                         value: (key, value),
                     } in codegen_attrs
                     {
@@ -575,7 +578,7 @@ impl<'a> GenerationCmd<'a> {
 
     #[track_caller]
     fn generate(&mut self) -> Output {
-        let inputs = create_input_from_selection(&self.selection);
+        let inputs = create_input_from_selection(self.selection);
         let stdout_output = match self.command {
             GenCommand::PipeInto(ref mut cmd) => {
                 let cmd_str = format!("{cmd:?}");
@@ -597,7 +600,7 @@ impl<'a> GenerationCmd<'a> {
             }
             GenCommand::Arg(ref mut cmd) => {
                 let cmd_str = format!("{cmd:?} <input-json>");
-                let mut child = cmd
+                let child = cmd
                     .arg(&serde_json::to_string(&inputs).unwrap())
                     .stdout(std::process::Stdio::piped())
                     .spawn()
@@ -652,6 +655,7 @@ fn create_input_from_selection(selection: &Generation) -> Input {
                     file_name,
                     newlines,
                     line_number_override: None,
+                    is_crlf,
                 },
             )
         })

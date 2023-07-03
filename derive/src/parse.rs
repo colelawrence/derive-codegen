@@ -1,16 +1,11 @@
 use i_codegen_code::utils;
 use i_codegen_types as st;
-use st::{Named, TypeRoot};
-use std::{
-    collections::{BTreeMap, HashMap},
-    error::Error,
-    marker::PhantomData,
-};
+use std::collections::{BTreeMap, HashMap};
 
 // use crate::attr;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Attribute, DeriveInput, Ident, Result};
+use syn::{DeriveInput, Ident, Result};
 
 pub enum DerivationKind {
     Internal,
@@ -141,10 +136,6 @@ fn path_to_string(path: &syn::Path) -> String {
 
 use serde_derive_internals::{ast, Ctxt, Derive};
 
-fn ident_from_str(s: &str) -> Ident {
-    syn::Ident::new(s, Span::call_site())
-}
-
 fn field_type_name(ty: &syn::Type) -> Option<String> {
     use syn::Type::Path;
     match ty {
@@ -180,7 +171,7 @@ impl<'a> ParseContext {
     pub(crate) fn derive_enum(
         &mut self,
         variants: &[ast::Variant<'a>],
-        container: &ast::Container,
+        _container: &ast::Container,
     ) -> st::ContainerFormat {
         let mut map = BTreeMap::<u32, st::Named<st::VariantFormat>>::new();
         for (idx, variant) in variants.iter().enumerate() {
@@ -221,13 +212,11 @@ impl<'a> ParseContext {
     fn derive_struct_newtype(
         &mut self,
         field: &ast::Field<'a>,
-        ast_container: &ast::Container,
+        _container: &ast::Container,
     ) -> st::ContainerFormat {
         if field.attrs.skip_serializing() {
             return self.derive_struct_unit();
         }
-        // // ?
-        // self.check_flatten(&[field], ast_container);
 
         st::ContainerFormat::NewTypeStruct(Box::new(self.field_to_format(field)))
     }
@@ -239,20 +228,9 @@ impl<'a> ParseContext {
     fn derive_struct_named_fields(
         &mut self,
         fields: &[ast::Field<'a>],
-        ast_container: &ast::Container,
+        _container: &ast::Container,
     ) -> st::ContainerFormat {
         let fields = filter_visible(fields);
-        // if fields.is_empty() {
-        //     return self.derive_struct_unit();
-        // };
-
-        // if fields.len() == 1 && ast_container.attrs.transparent() {
-        //     return self.derive_struct_newtype(&fields[0], ast_container);
-        // };
-
-        // // will surface an error for flattened content
-        // self.check_flatten(&fields, ast_container);
-
         st::ContainerFormat::Struct(self.derive_named_fields(&fields).collect())
     }
 
@@ -269,9 +247,6 @@ impl<'a> ParseContext {
         if fields.len() == 1 && ast_container.attrs.transparent() {
             return self.derive_struct_newtype(&fields[0], ast_container);
         };
-
-        // // will surface an error for flattened content
-        // self.check_flatten(&fields, ast_container);
 
         st::ContainerFormat::TupleStruct(self.derive_fields_tuple(&fields).collect())
     }
@@ -317,7 +292,7 @@ impl<'a> ParseContext {
                                 ),
                             ))
                         }
-                        Err(other) => {
+                        Err(_other) => {
                             // not a value, assume it's a flag, then?
                             named
                                 .serde_flags
@@ -352,7 +327,7 @@ impl<'a> ParseContext {
                                 ),
                             ))
                         }
-                        Err(other) => {
+                        Err(_other) => {
                             // not a value, assume it's a flag, then?
                             named
                                 .codegen_flags
@@ -392,8 +367,8 @@ fn spanned<T>(spans: &[proc_macro2::Span], value: T) -> st::Spanned<T> {
 
 pub(crate) struct ParseContext {
     ctxt: Option<serde_derive_internals::Ctxt>, // serde parse context for error reporting
-    // global_attrs: Attrs, // global #[fs(...)] attributes
-    ident: syn::Ident, // name of enum struct
+    #[allow(unused)]
+    ident: syn::Ident,      // name of enum struct
     /// Extras to publish like "Duration"
     publish_builtins: HashMap<String, st::Named<st::ContainerFormat>>,
 }
@@ -413,27 +388,27 @@ impl Drop for ParseContext {
 impl<'a> ParseContext {
     // Some helpers
 
-    fn err_msg<A: quote::ToTokens>(&self, tokens: A, msg: &str) {
-        if let Some(ref ctxt) = self.ctxt {
-            ctxt.error_spanned_by(tokens, msg);
-        } else {
-            panic!("{}", msg)
-        }
-    }
+    // fn err_msg<A: quote::ToTokens>(&self, tokens: A, msg: &str) {
+    //     if let Some(ref ctxt) = self.ctxt {
+    //         ctxt.error_spanned_by(tokens, msg);
+    //     } else {
+    //         panic!("{}", msg)
+    //     }
+    // }
 
-    fn check_flatten(&self, fields: &[&'a ast::Field<'a>], ast_container: &ast::Container) -> bool {
-        let has_flatten = fields.iter().any(|f| f.attrs.flatten()); // .any(|f| f);
-        if has_flatten {
-            self.err_msg(
-                &self.ident,
-                &format!(
-                    "{}: #[serde(flatten)] does not work for fsharp-definitions.",
-                    ast_container.ident
-                ),
-            );
-        };
-        has_flatten
-    }
+    // fn check_flatten(&self, fields: &[&'a ast::Field<'a>], ast_container: &ast::Container) -> bool {
+    //     let has_flatten = fields.iter().any(|f| f.attrs.flatten()); // .any(|f| f);
+    //     if has_flatten {
+    //         self.err_msg(
+    //             &self.ident,
+    //             &format!(
+    //                 "{}: #[serde(flatten)] does not work for derive-codegen.",
+    //                 ast_container.ident
+    //             ),
+    //         );
+    //     };
+    //     has_flatten
+    // }
 
     fn field_to_format(&mut self, field: &ast::Field<'a>) -> st::Format {
         self.type_to_format(field.ty)
@@ -448,8 +423,7 @@ impl<'a> ParseContext {
 
         use syn::Type as SynType;
         use syn::{
-            TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeParamBound, TypeParen, TypePath,
-            TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
+            TypeArray, TypeGroup, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTuple,
         };
         match ty {
             SynType::Slice(TypeSlice { elem, .. })
@@ -496,6 +470,7 @@ impl<'a> ParseContext {
                 }
             }
             // Recommended way to test exhaustiveness without breaking API
+            #[allow(unknown_lints)]
             #[cfg_attr(test, deny(non_exhaustive_omitted_patterns))]
             _ => st::Format::Incomplete {
                 debug: format!("Unknown other type"),
@@ -504,7 +479,7 @@ impl<'a> ParseContext {
     }
 
     #[allow(clippy::cognitive_complexity)]
-    fn generic_to_format(&mut self, ts: &TSType) -> st::Format {
+    fn generic_to_format(&mut self, ts: &TypeFormat) -> st::Format {
         let mut to_format = |ty: &syn::Type| self.type_to_format(ty);
         let name = ts.ident.to_string();
         match name.as_ref() {
@@ -688,7 +663,7 @@ external entities like the file system or other processes."#,
         name: &str,
         docs: &str,
         origin: Option<(usize, usize)>,
-        mut or_with: impl FnOnce() -> st::ContainerFormat,
+        or_with: impl FnOnce() -> st::ContainerFormat,
     ) -> st::Format {
         let name = name.to_string();
         self.publish_builtins
@@ -708,9 +683,6 @@ external entities like the file system or other processes."#,
     }
 
     fn derive_named_field(&mut self, field: &ast::Field<'a>) -> st::Named<st::Format> {
-        let field_name = field.attrs.name().serialize_name(); // use serde name instead of field.member
-        let ty = self.field_to_format(&field);
-        // let comment = Attrs::from_field(field, self.ctxt.as_ref()).to_comment_source();
         match &field.member {
             syn::Member::Named(named) => {
                 let format = self.field_to_format(field);
@@ -749,21 +721,21 @@ external entities like the file system or other processes."#,
     }
 }
 
-// represents a typescript type T<A,B>
-struct TSType {
+struct TypeFormat {
     ident: syn::Ident,
     args: Vec<syn::Type>,
     path: Vec<syn::Ident>,          // full path
+    #[allow(unused)]
     return_type: Option<syn::Type>, // only if function
 }
 
-impl TSType {
+impl TypeFormat {
     fn path(&self) -> Vec<String> {
         self.path.iter().map(|i| i.to_string()).collect() // hold the memory
     }
 }
 
-fn last_path_element(path: &syn::Path) -> Option<TSType> {
+fn last_path_element(path: &syn::Path) -> Option<TypeFormat> {
     let fullpath = path
         .segments
         .iter()
@@ -778,7 +750,7 @@ fn last_path_element(path: &syn::Path) -> Option<TSType> {
                 syn::PathArguments::Parenthesized(ref path) => {
                     let args: Vec<_> = path.inputs.iter().cloned().collect();
                     let ret = return_type(&path.output);
-                    return Some(TSType {
+                    return Some(TypeFormat {
                         ident,
                         args,
                         path: fullpath,
@@ -786,7 +758,7 @@ fn last_path_element(path: &syn::Path) -> Option<TSType> {
                     });
                 }
                 syn::PathArguments::None => {
-                    return Some(TSType {
+                    return Some(TypeFormat {
                         ident,
                         args: vec![],
                         path: fullpath,
@@ -807,7 +779,7 @@ fn last_path_element(path: &syn::Path) -> Option<TSType> {
                 .cloned()
                 .collect::<Vec<_>>();
 
-            Some(TSType {
+            Some(TypeFormat {
                 ident,
                 path: fullpath,
                 args,

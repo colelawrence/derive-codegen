@@ -1,7 +1,4 @@
 {
   "deno.enable": true,
-  "deno.unstable": true,
-  "rust-analyzer.cargo.extraEnv": {
-    "RUSTFLAGS": "-Awarnings"
-  }
+  "deno.unstable": true
 }

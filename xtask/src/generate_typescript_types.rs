@@ -1,11 +1,19 @@
-#[macro_use]
-pub extern crate i_codegen_derive;
+use derive_codegen::Generation;
+use gumdrop::Options;
 use std::process::Command;
-use generate::Generation;
 
-mod generate;
+#[derive(Options)]
+pub(crate) struct SubOptions {
+    #[options(help = "show help")]
+    help: bool,
+}
 
-fn main() {
+pub(crate) fn run(options: SubOptions) {
+    if options.help {
+        println!("{}", SubOptions::usage());
+        return;
+    }
+
     Generation::for_tag("derive-codegen-internal")
         .as_arg_of(
             Command::new("deno")

@@ -23,5 +23,3 @@ syn = { version = "2.0", features = ["extra-traits"] }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
-
-[dev-dependencies.syn]

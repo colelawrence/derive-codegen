@@ -1,7 +1,7 @@
 pub use linkme;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
-use serde_reflection::{self, ContainerFormat, Tracer, TracerConfig};
+use serde_reflection;
 
 pub mod utils;
 
@@ -51,12 +51,12 @@ impl Context {
         match &type_root.inner.value {
             i_codegen_types::ContainerFormat::Enum(_) => {
                 for i_codegen_types::Spanned {
-                    value: (key, value),
+                    value: (key, _value),
                     ..
                 } in type_root.inner.serde_attrs.iter()
                 {
                     if &key.value == "tag" || &key.value == "content" {
-                        self.untraced.push((type_root));
+                        self.untraced.push(type_root);
                         return;
                     }
                 }
@@ -64,6 +64,7 @@ impl Context {
             _ => {}
         }
 
+        #[allow(unused)]
         if let Some((ref mut tracer, ref mut merge)) = self.tracer {
             type TODO = ();
             todo!("Trace simple enabled for serialize only?");
@@ -113,8 +114,15 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
         errors,
         untraced: mut type_roots,
         tracer,
-        tags: _,
+        tags,
     } = context;
+
+    if !errors.is_empty() {
+        eprintln!("Context trace errors for tags {tags:?}:");
+        for err in errors {
+            eprintln!(" * {err:?}");
+        }
+    }
 
     if let Some((tracer, merge)) = tracer {
         let registry = tracer.registry().expect("constructing registry");
@@ -149,7 +157,7 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
                                 format.replace_incomplete(format_to_format(&reflected));
                             },
                             (VariantFormat::Tuple(ref mut formats), sr::VariantFormat::Tuple(reflected_formats)) => {
-                                for (mut format, reflected) in formats.iter_mut().zip(reflected_formats.iter()) {
+                                for (format, reflected) in formats.iter_mut().zip(reflected_formats.iter()) {
                                     format.replace_incomplete(format_to_format(&reflected));
                                 }
                             },
