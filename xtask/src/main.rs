@@ -1,6 +1,5 @@
-use std::os::unix::process;
-
 use gumdrop::Options;
+mod generate_golang_types_example;
 mod generate_typescript_types;
 mod print_internal_types;
 
@@ -13,6 +12,8 @@ enum Command {
     // Names can be explicitly specified using `#[options(name = "...")]`
     #[options(help = "generate internal typescript types")]
     GenerateTypescriptTypes(generate_typescript_types::SubOptions),
+    #[options(help = "generate golang types example")]
+    GenerateGolangTypesExample(generate_golang_types_example::SubOptions),
     #[options(
         help = "print the json of the internal types (this can be useful for testing your generators)"
     )]
@@ -50,6 +51,7 @@ fn main() {
 
     match command {
         Command::GenerateTypescriptTypes(sub) => generate_typescript_types::run(sub),
+        Command::GenerateGolangTypesExample(sub) => generate_golang_types_example::run(sub),
         Command::PrintInternalTypes(sub) => print_internal_types::run(sub),
     }
 }
