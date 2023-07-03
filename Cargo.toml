@@ -1,5 +1,5 @@
 [workspace]
-members = ["./derive", "./code", "./types", "./examples", "./xtask"]
+members = ["./derive", "./code", "./types", "./xtask"]
 
 [workspace.package]
 version = "0.0.1"
