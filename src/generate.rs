@@ -612,6 +612,15 @@ impl<'a> GenerationCmd<'a> {
         };
 
         let stdout_str = String::from_utf8_lossy(&stdout_output.stdout);
+
+        if !stdout_output.status.success() {
+            eprintln!("Non-success status from generation");
+            if !stdout_str.trim().is_empty() {
+                eprintln!("Stdout:\n{stdout_str}");
+            }
+            std::process::exit(1);
+        }
+
         serde_json::from_str::<Output>(&stdout_str)
             .map_err(|err| {
                 format!(
