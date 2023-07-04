@@ -12,6 +12,7 @@ type SimpleEnum struct {
 type SimpleEnumType interface{ isSimpleEnumType() }
 
 type SimpleEnumTypeSwitchVUnit struct{}
+type SimpleEnumTypeSwitchVUnit2 struct{}
 type SimpleEnumTypeSwitchVStr string
 type SimpleEnumTypeSwitchVStr2 string
 type SimpleEnumTypeSwitchVNewTypeStruct SimpleEnumTypeSwitchVTuple
@@ -24,6 +25,7 @@ type SimpleEnumTypeSwitchVStruct struct {
 }
 
 func (SimpleEnumTypeSwitchVUnit) isSimpleEnumType()          {}
+func (SimpleEnumTypeSwitchVUnit2) isSimpleEnumType()         {}
 func (SimpleEnumTypeSwitchVTuple) isSimpleEnumType()         {}
 func (SimpleEnumTypeSwitchVStr) isSimpleEnumType()           {}
 func (SimpleEnumTypeSwitchVStr2) isSimpleEnumType()          {}
@@ -52,15 +54,21 @@ func (v *SimpleEnumTypeSwitchVUnit) UnmarshalJSON(b []byte) error {
 func SimpleEnumTypeSwitch[R any](
 	fieldType SimpleEnumType,
 	vunit func(SimpleEnumTypeSwitchVUnit) (R, error),
+	vunit2 func(SimpleEnumTypeSwitchVUnit2) (R, error),
 	vstr func(SimpleEnumTypeSwitchVStr) (R, error),
 	vstr2 func(SimpleEnumTypeSwitchVStr2) (R, error),
 	vtuple func(SimpleEnumTypeSwitchVTuple) (R, error),
+	vnewtypestruct func(SimpleEnumTypeSwitchVNewTypeStruct) (R, error),
 	vstruct func(SimpleEnumTypeSwitchVStruct) (R, error),
 ) (res R, err error) {
 	switch v := fieldType.(type) {
 	case SimpleEnumTypeSwitchVUnit:
 		if vunit != nil {
 			return vunit(v)
+		}
+	case SimpleEnumTypeSwitchVUnit2:
+		if vunit != nil {
+			return vunit2(v)
 		}
 	case SimpleEnumTypeSwitchVStr:
 		if vstr != nil {
@@ -73,6 +81,10 @@ func SimpleEnumTypeSwitch[R any](
 	case SimpleEnumTypeSwitchVTuple:
 		if vtuple != nil {
 			return vtuple(v)
+		}
+	case SimpleEnumTypeSwitchVNewTypeStruct:
+		if vtuple != nil {
+			return vnewtypestruct(v)
 		}
 	case SimpleEnumTypeSwitchVStruct:
 		if vstruct != nil {
@@ -93,6 +105,9 @@ func getName(field SimpleEnumType) string {
 		func(setsv SimpleEnumTypeSwitchVUnit) (string, error) {
 			return "VUnit", nil
 		},
+		func(setsv SimpleEnumTypeSwitchVUnit2) (string, error) {
+			return "VUnit2", nil
+		},
 		func(setsv SimpleEnumTypeSwitchVStr) (string, error) {
 			return "VStr", nil
 		},
@@ -101,6 +116,9 @@ func getName(field SimpleEnumType) string {
 		},
 		func(setsv SimpleEnumTypeSwitchVTuple) (string, error) {
 			return "VTuple", nil
+		},
+		func(setsv SimpleEnumTypeSwitchVNewTypeStruct) (string, error) {
+			return "VNewTypeStruct", nil
 		},
 		func(setsv SimpleEnumTypeSwitchVStruct) (string, error) {
 			return "VStruct", nil
