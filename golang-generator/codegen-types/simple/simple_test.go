@@ -38,7 +38,7 @@ func TestJsonUnmarshalVariant(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (dest *SimpleEnumTypeSwitchVTuple) UnmarshalJSON(data []byte) error {
+func (dest *SimpleEnum_VTuple) UnmarshalJSON(data []byte) error {
 	var v []interface{}
 	if err := json.Unmarshal(data, &v); err != nil {
 		return fmt.Errorf("Error unmarshaling VTuple variant as array: %w", err)
@@ -55,19 +55,19 @@ func (dest *SimpleEnumTypeSwitchVTuple) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return fmt.Errorf("expected number for \"VTuple\" tuple's second element")
 	}
-	*dest = SimpleEnumTypeSwitchVTuple{
+	*dest = SimpleEnum_VTuple{
 		A: a,
 		B: int64(b),
 	}
 	return nil
 }
 
-func (dest *SimpleEnumTypeSwitchVNewTypeStruct) UnmarshalJSON(data []byte) error {
-	var v SimpleEnumTypeSwitchVTuple
+func (dest *SimpleEnum_VNewTypeStruct) UnmarshalJSON(data []byte) error {
+	var v SimpleEnum_VTuple
 	if err := json.Unmarshal(data, &v); err != nil {
-		return fmt.Errorf("Error unmarshaling VNewTypeStruct variant as SimpleEnumTypeSwitchVTuple: %w", err)
+		return fmt.Errorf("Error unmarshaling VNewTypeStruct variant as SimpleEnum_VTuple: %w", err)
 	}
-	*dest = SimpleEnumTypeSwitchVNewTypeStruct(v)
+	*dest = SimpleEnum_VNewTypeStruct(v)
 	return nil
 }
 
@@ -79,10 +79,10 @@ func UnmarshalVariantsOfExternalTag(input string, into *SimpleEnum) (string, err
 	if err = json.Unmarshal(inp, &unitName); err == nil {
 		switch unitName {
 		case "VUnit":
-			into.Data = SimpleEnumTypeSwitchVUnit{}
+			*into = SimpleEnum(SimpleEnum_VUnit{})
 			return "VUnit", nil
 		case "VUnit2":
-			into.Data = SimpleEnumTypeSwitchVUnit2{}
+			*into = SimpleEnum(SimpleEnum_VUnit2{})
 			return "VUnit2", nil
 		default:
 			return "", fmt.Errorf("Unmatched Variant %q", unitName)
@@ -97,33 +97,40 @@ func UnmarshalVariantsOfExternalTag(input string, into *SimpleEnum) (string, err
 	for key, value := range rawData {
 		switch key {
 		case "VStr":
-			var v SimpleEnumTypeSwitchVStr
+			var v SimpleEnum_VStr
 			if err := json.Unmarshal(value, &v); err != nil {
 				return "", fmt.Errorf("Error unmarshaling VStr variant: %w", err)
 			}
-			into.Data = v
+			*into = SimpleEnum(v)
 			return "VStr", nil
 		case "VStr2":
-			var v SimpleEnumTypeSwitchVStr2
+			var v SimpleEnum_VStr2
 			if err := json.Unmarshal(value, &v); err != nil {
 				return "", fmt.Errorf("Error unmarshaling VStr2 variant: %w", err)
 			}
-			into.Data = v
+			*into = SimpleEnum(v)
 			return "VStr2", nil
 		case "VTuple":
-			var v SimpleEnumTypeSwitchVTuple
+			var v SimpleEnum_VTuple
 			if err := json.Unmarshal(value, &v); err != nil {
 				return "", fmt.Errorf("Error unmarshaling VTuple variant: %w", err)
 			}
-			into.Data = v
+			*into = SimpleEnum(v)
 			return "VTuple", nil
 		case "VNewTypeStruct":
-			var v SimpleEnumTypeSwitchVNewTypeStruct
+			var v SimpleEnum_VNewTypeStruct
 			if err := json.Unmarshal(value, &v); err != nil {
 				return "", fmt.Errorf("Error unmarshaling VNewTypeStruct variant: %w", err)
 			}
-			into.Data = v
+			*into = SimpleEnum(v)
 			return "VNewTypeStruct", nil
+		case "VStruct":
+			var v SimpleEnum_VStruct
+			if err := json.Unmarshal(value, &v); err != nil {
+				return "", fmt.Errorf("Error unmarshaling VStruct variant: %w", err)
+			}
+			*into = SimpleEnum(v)
+			return "VStruct", nil
 		}
 	}
 
@@ -136,32 +143,32 @@ func RequireJSONVariants(t *testing.T, output, input string) SimpleEnumType {
 	out, err := UnmarshalVariantsOfExternalTag(input, &into)
 	require.NoError(t, err)
 	require.Equal(t, output, out)
-	return into.Data
+	return into
 }
 
 func TestJsonUnmarshalVariants(t *testing.T) {
 	vunit := RequireJSONVariants(t, "VUnit", "\"VUnit\"")
-	require.Equal(t, SimpleEnumTypeSwitchVUnit{}, vunit)
+	require.Equal(t, SimpleEnum_VUnit{}, vunit)
 	vunit2 := RequireJSONVariants(t, "VUnit2", "  \"VUnit2\" ")
-	require.Equal(t, SimpleEnumTypeSwitchVUnit2{}, vunit2)
+	require.Equal(t, SimpleEnum_VUnit2{}, vunit2)
 	vstr := RequireJSONVariants(t, "VStr", "   {\"VStr\": \"text 1\"}  ")
-	require.Equal(t, SimpleEnumTypeSwitchVStr("text 1"), vstr)
+	require.Equal(t, SimpleEnum_VStr("text 1"), vstr)
 	vstr2 := RequireJSONVariants(t, "VStr2", "{\"VStr2\": \"text 2\"}")
-	require.Equal(t, SimpleEnumTypeSwitchVStr2("text 2"), vstr2)
+	require.Equal(t, SimpleEnum_VStr2("text 2"), vstr2)
 	vtuple := RequireJSONVariants(t, "VTuple", "   {\"VTuple\": [\"text\",120]}  ")
-	require.Equal(t, SimpleEnumTypeSwitchVTuple{A: "text", B: 120}, vtuple)
+	require.Equal(t, SimpleEnum_VTuple{A: "text", B: 120}, vtuple)
 	vnewtypestruct := RequireJSONVariants(t, "VNewTypeStruct", "   {\"VNewTypeStruct\": [\"string\", 120]}  ")
-	require.Equal(t, SimpleEnumTypeSwitchVNewTypeStruct(SimpleEnumTypeSwitchVTuple{A: "string", B: 120}), vnewtypestruct)
+	require.Equal(t, SimpleEnum_VNewTypeStruct(SimpleEnum_VTuple{A: "string", B: 120}), vnewtypestruct)
 	vstruct := RequireJSONVariants(t, "VStruct", "   {\"VStruct\": {\"vfield\": \"...\"}}  ")
-	require.Equal(t, SimpleEnumTypeSwitchVStruct{Vfield: "string"}, vstruct)
+	require.Equal(t, SimpleEnum_VStruct{Vfield: "..."}, vstruct)
 }
 
 func TestMatchWithStr2(t *testing.T) {
-	newTypeStr := SimpleEnumTypeSwitchVStr("Name")
+	newTypeStr := SimpleEnum_VStr("Name")
 	acceptsString(string(newTypeStr))
 	require.Equal(t, "Hello Name", fmt.Sprintf("Hello %s", newTypeStr))
-	require.Equal(t, "VStr", getName(SimpleEnumTypeSwitchVStr("SimpleEnumTypeSwitchVStr")))
-	require.Equal(t, "VStr2", getName(SimpleEnumTypeSwitchVStr2("SimpleEnumTypeSwitchVStr")))
+	require.Equal(t, "VStr", getName(SimpleEnum_VStr("SimpleEnum_VStr")))
+	require.Equal(t, "VStr2", getName(SimpleEnum_VStr2("SimpleEnum_VStr")))
 }
 
 func acceptsString(str string) {}

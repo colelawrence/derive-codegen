@@ -5,38 +5,36 @@ import (
 	"fmt"
 )
 
-type SimpleEnum struct {
-	Data SimpleEnumType
-}
+type SimpleEnum = SimpleEnumType
 
 type SimpleEnumType interface{ isSimpleEnumType() }
 
-type SimpleEnumTypeSwitchVUnit struct{}
-type SimpleEnumTypeSwitchVUnit2 struct{}
-type SimpleEnumTypeSwitchVStr string
-type SimpleEnumTypeSwitchVStr2 string
-type SimpleEnumTypeSwitchVNewTypeStruct SimpleEnumTypeSwitchVTuple
-type SimpleEnumTypeSwitchVTuple struct {
+type SimpleEnum_VUnit struct{}
+type SimpleEnum_VUnit2 struct{}
+type SimpleEnum_VStr string
+type SimpleEnum_VStr2 string
+type SimpleEnum_VNewTypeStruct SimpleEnum_VTuple
+type SimpleEnum_VTuple struct {
 	A string
 	B int64
 }
-type SimpleEnumTypeSwitchVStruct struct {
+type SimpleEnum_VStruct struct {
 	Vfield string
 }
 
-func (SimpleEnumTypeSwitchVUnit) isSimpleEnumType()          {}
-func (SimpleEnumTypeSwitchVUnit2) isSimpleEnumType()         {}
-func (SimpleEnumTypeSwitchVTuple) isSimpleEnumType()         {}
-func (SimpleEnumTypeSwitchVStr) isSimpleEnumType()           {}
-func (SimpleEnumTypeSwitchVStr2) isSimpleEnumType()          {}
-func (SimpleEnumTypeSwitchVStruct) isSimpleEnumType()        {}
-func (SimpleEnumTypeSwitchVNewTypeStruct) isSimpleEnumType() {}
+func (SimpleEnum_VUnit) isSimpleEnumType()          {}
+func (SimpleEnum_VUnit2) isSimpleEnumType()         {}
+func (SimpleEnum_VTuple) isSimpleEnumType()         {}
+func (SimpleEnum_VStr) isSimpleEnumType()           {}
+func (SimpleEnum_VStr2) isSimpleEnumType()          {}
+func (SimpleEnum_VStruct) isSimpleEnumType()        {}
+func (SimpleEnum_VNewTypeStruct) isSimpleEnumType() {}
 
-func (v SimpleEnumTypeSwitchVUnit) MarshalJSON() ([]byte, error) {
+func (v SimpleEnum_VUnit) MarshalJSON() ([]byte, error) {
 	return json.Marshal("VUnit")
 }
 
-func (v *SimpleEnumTypeSwitchVUnit) UnmarshalJSON(b []byte) error {
+func (v *SimpleEnum_VUnit) UnmarshalJSON(b []byte) error {
 	var a string
 
 	if err := json.Unmarshal(b, &a); err != nil {
@@ -47,46 +45,46 @@ func (v *SimpleEnumTypeSwitchVUnit) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("SimpleEnum::VUnit: bad value: %q", a)
 	}
 
-	*v = SimpleEnumTypeSwitchVUnit{}
+	*v = SimpleEnum_VUnit{}
 	return nil
 }
 
-func SimpleEnumTypeSwitch[R any](
+func SimpleEnum_[R any](
 	fieldType SimpleEnumType,
-	vunit func(SimpleEnumTypeSwitchVUnit) (R, error),
-	vunit2 func(SimpleEnumTypeSwitchVUnit2) (R, error),
-	vstr func(SimpleEnumTypeSwitchVStr) (R, error),
-	vstr2 func(SimpleEnumTypeSwitchVStr2) (R, error),
-	vtuple func(SimpleEnumTypeSwitchVTuple) (R, error),
-	vnewtypestruct func(SimpleEnumTypeSwitchVNewTypeStruct) (R, error),
-	vstruct func(SimpleEnumTypeSwitchVStruct) (R, error),
+	vunit func(SimpleEnum_VUnit) (R, error),
+	vunit2 func(SimpleEnum_VUnit2) (R, error),
+	vstr func(SimpleEnum_VStr) (R, error),
+	vstr2 func(SimpleEnum_VStr2) (R, error),
+	vtuple func(SimpleEnum_VTuple) (R, error),
+	vnewtypestruct func(SimpleEnum_VNewTypeStruct) (R, error),
+	vstruct func(SimpleEnum_VStruct) (R, error),
 ) (res R, err error) {
 	switch v := fieldType.(type) {
-	case SimpleEnumTypeSwitchVUnit:
+	case SimpleEnum_VUnit:
 		if vunit != nil {
 			return vunit(v)
 		}
-	case SimpleEnumTypeSwitchVUnit2:
+	case SimpleEnum_VUnit2:
 		if vunit != nil {
 			return vunit2(v)
 		}
-	case SimpleEnumTypeSwitchVStr:
+	case SimpleEnum_VStr:
 		if vstr != nil {
 			return vstr(v)
 		}
-	case SimpleEnumTypeSwitchVStr2:
+	case SimpleEnum_VStr2:
 		if vstr != nil {
 			return vstr2(v)
 		}
-	case SimpleEnumTypeSwitchVTuple:
+	case SimpleEnum_VTuple:
 		if vtuple != nil {
 			return vtuple(v)
 		}
-	case SimpleEnumTypeSwitchVNewTypeStruct:
+	case SimpleEnum_VNewTypeStruct:
 		if vtuple != nil {
 			return vnewtypestruct(v)
 		}
-	case SimpleEnumTypeSwitchVStruct:
+	case SimpleEnum_VStruct:
 		if vstruct != nil {
 			return vstruct(v)
 		}
@@ -101,26 +99,26 @@ func SimpleEnumTypeSwitch[R any](
 }
 
 func getName(field SimpleEnumType) string {
-	name, _ := SimpleEnumTypeSwitch(field,
-		func(setsv SimpleEnumTypeSwitchVUnit) (string, error) {
+	name, _ := SimpleEnum_(field,
+		func(setsv SimpleEnum_VUnit) (string, error) {
 			return "VUnit", nil
 		},
-		func(setsv SimpleEnumTypeSwitchVUnit2) (string, error) {
+		func(setsv SimpleEnum_VUnit2) (string, error) {
 			return "VUnit2", nil
 		},
-		func(setsv SimpleEnumTypeSwitchVStr) (string, error) {
+		func(setsv SimpleEnum_VStr) (string, error) {
 			return "VStr", nil
 		},
-		func(setsv SimpleEnumTypeSwitchVStr2) (string, error) {
+		func(setsv SimpleEnum_VStr2) (string, error) {
 			return "VStr2", nil
 		},
-		func(setsv SimpleEnumTypeSwitchVTuple) (string, error) {
+		func(setsv SimpleEnum_VTuple) (string, error) {
 			return "VTuple", nil
 		},
-		func(setsv SimpleEnumTypeSwitchVNewTypeStruct) (string, error) {
+		func(setsv SimpleEnum_VNewTypeStruct) (string, error) {
 			return "VNewTypeStruct", nil
 		},
-		func(setsv SimpleEnumTypeSwitchVStruct) (string, error) {
+		func(setsv SimpleEnum_VStruct) (string, error) {
 			return "VStruct", nil
 		},
 	)
