@@ -6,13 +6,8 @@ import (
 
 // supports
 // `#[codegen(package = "simple", tags = "simple-go")]`
-const todo = \`
-export type SimpleStruct = {
-  sstr: string;
-  sint: int64;
-};
+export type SimpleTupleStruct = [uint8, big.Int, int]
 // `#[codegen(package = "simple", tags = "simple-go")]`
-export function SimpleStruct(inner: SimpleStruct): SimpleStruct {
-  return inner;
+export function SimpleTupleStruct(A: uint8, B: big.Int, C: int): SimpleTupleStruct {
+  return [A, B, C];
 }
-\`

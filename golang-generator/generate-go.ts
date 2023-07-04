@@ -11,24 +11,59 @@ function convert(input: gen.Input): GeneratedDecl[] {
   console.error("Number of declarations: ", input.declarations.length);
   for (const decl of input.declarations) {
     const packageName = decl.codegen_attrs?.package?.[0] ?? "generated";
-    const $decl = new Code([`package ${packageName}`, ""]);
+    const $decl = new Code([
+      `package ${packageName}`,
+      "import (",
+      new Code(['"encoding/json"', '"fmt"']),
+      ")",
+      "",
+    ]);
     const docs = Code.docString(decl);
+
+    const $support = $decl.grouped(["// supports"]);
+    let supportIdx = 0;
+    const createFormatFor = createFormatter({
+      addSupportingTuple(prefix, tuple) {
+        supportIdx += 1;
+        const supportIdent = `${prefix}Tuple${
+          supportIdx > 1 ? supportIdx : ""
+        }`;
+        $support.add`type ${supportIdent} interface{} // TODO ${JSON.stringify(
+          tuple
+        )}`;
+        return supportIdent;
+      },
+    });
+
+    const goDeclIdent = ident(decl.id);
+    const createFormat = createFormatFor(goDeclIdent);
 
     gen.ContainerFormat.match(decl.container_kind, {
       Struct({ fields }) {
-        const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export type ${structIdent} = {`;
-        typeFieldsFinish$($decl, fields);
+        $decl.add`const todo = \``;
+        $decl.add`export type ${goDeclIdent} = {`;
+        typeFieldsFinish$(createFormatFor(goDeclIdent), $decl, fields);
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(inner: ${structIdent}): ${structIdent} {`;
+        $decl.add`export function ${goDeclIdent}(inner: ${goDeclIdent}): ${goDeclIdent} {`;
         $decl.ad1`return inner;`;
         $decl.add`}`;
+        $decl.add`\``;
       },
       Enum({ repr, variants }) {
-        const enumIdent = ident(decl.id);
+        const enumInterfaceIdent = goDeclIdent + "Type";
+        $decl.lines.push(...docs);
+        $decl.add`type ${goDeclIdent} = ${enumInterfaceIdent}`;
+        $decl.add``;
+        $decl.add`type ${enumInterfaceIdent} interface{ is${enumInterfaceIdent}() }`;
+        $decl.add``;
+        const $types = $decl.grouped(["// types"]);
+        const $impl = $decl.grouped(["// impl"]);
+        const $unmarshl = $decl.grouped(["// unmarshal"]);
+        const $marshall = $decl.grouped(["// marshal"]);
+
         const $nsMatchToObj = new Code(["// callbacks"]);
         const $nsMatchIfStrs = new Code(["// if-else strings"]);
         const $nsMatchIfObjs = new Code([
@@ -39,10 +74,10 @@ function convert(input: gen.Input): GeneratedDecl[] {
           `export type ApplyFns<R> = {`,
           $nsMatchToObj,
           `}`,
-          `/** Match helper for {@link ${enumIdent}} */`,
+          `/** Match helper for {@link ${goDeclIdent}} */`,
           `export function apply<R>(`,
           new Code([`to: ApplyFns<R>,`]),
-          `): (input: ${enumIdent}) => R {`,
+          `): (input: ${goDeclIdent}) => R {`,
           new Code([
             `return function _match(input): R {`,
             $nsMatchIfStrs,
@@ -51,9 +86,9 @@ function convert(input: gen.Input): GeneratedDecl[] {
             `}`,
           ]),
           `}`,
-          `/** Match helper for {@link ${enumIdent}} */`,
+          `/** Match helper for {@link ${goDeclIdent}} */`,
           `export function match<R>(`,
-          new Code([`input: ${enumIdent},`, `to: ApplyFns<R>,`]),
+          new Code([`input: ${goDeclIdent},`, `to: ApplyFns<R>,`]),
           `): R {`,
           new Code([`return apply(to)(input)`]),
           `}`,
@@ -62,41 +97,55 @@ function convert(input: gen.Input): GeneratedDecl[] {
           ...docs,
           // create / matchers
           `// deno-lint-ignore no-namespace`,
-          `export namespace ${enumIdent} {`,
+          `export namespace ${goDeclIdent} {`,
           $ns,
           `}`,
           // type
           ...docs,
-          `export type ${enumIdent} =`,
+          `export type ${goDeclIdent} =`,
         ]);
 
         // TODO: handle different representations properly
 
         for (const variant of variants) {
-          const variantIdent = ident(variant.id);
+          const variantIdentBare = ident(variant.id);
+          const variantGoTypeIdent = `${goDeclIdent}_${variantIdentBare}`;
+          $impl.add`func (${variantGoTypeIdent}) is${goDeclIdent}Type() {}`;
           const variantNameField = namedField(variant);
-          const variantIdentRef = `${enumIdent}.${variantIdent}`;
+          const variantIdentRef = `${goDeclIdent}.${variantGoTypeIdent}`;
           typeCode.ad1`| ${variantIdentRef}`;
           const variantDocs = Code.docString(variant);
+          const createFormat = createFormatFor(variantGoTypeIdent);
           gen.VariantFormat.match(variant.variant_format, {
             NewType(format) {
               const newTypeTs = createFormat(format);
               // type
-              $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = {`;
-              $ns.indented().lines.push(...variantDocs);
-              $ns.ad1`${variantNameField}: ${newTypeTs.src}`;
-              $ns.add`};`;
+              $types.lines.push(...variantDocs);
+              $types.add`type ${variantGoTypeIdent} ${newTypeTs}`;
+
+              // todo unmarshal
+              $unmarshl.add`func(v *${variantGoTypeIdent}) UnmarshalJSON(b []byte) error {`;
+              $unmarshl.indented([
+                `panic("UnmarshalJSON not implemented for NewType")`,
+              ]);
+              $unmarshl.add`}`;
+              // todo marshal
+              $marshall.add`func(v ${variantGoTypeIdent}) MarshalJSON() ([]byte, error) {`;
+              $marshall.indented([
+                `panic("MarshalJSON not implemented for NewType")`,
+              ]);
+              $marshall.add`}`;
+
               // create
               $ns.lines.push(...variantDocs);
-              $ns.add`export function ${variantIdent}(value${
+              $ns.add`export function ${variantGoTypeIdent}(value${
                 newTypeTs.optional && "?"
-              }: ${newTypeTs.src}): ${variantIdent} {`;
+              }: ${newTypeTs.src}): ${variantGoTypeIdent} {`;
               $ns.ad1`return { ${variantNameField}: value };`;
               $ns.add`}`;
               // match callback
               $nsMatchToObj.lines.push(...variantDocs);
-              $nsMatchToObj.add`${variantIdent}(inner: ${variantIdent}[${namedStr(
+              $nsMatchToObj.add`${variantGoTypeIdent}(inner: ${variantGoTypeIdent}[${namedStr(
                 variant
               )}]): R;`;
               // match if else
@@ -107,65 +156,123 @@ function convert(input: gen.Input): GeneratedDecl[] {
               )}]);`;
             },
             Tuple(formats) {
-              const formatTsList = tupleFormats(formats);
+              const formatGoList = tupleFormats(createFormat, formats);
               const vnStr = namedStr(variant);
-              const innerTypeRef = `[${formatTsList
+              const innerTypeRef = `[${formatGoList
                 .map((f) => f.fmt.src)
                 .join(", ")}]`;
               // type
+              $types.lines.push(...variantDocs);
+              $types.add`type ${variantGoTypeIdent} struct {`;
+              $types.indented([
+                "// todo tuple fields like A, B, C",
+                ...formatGoList.map((f) => `${f.id} ${f.fmt.src}`),
+              ]);
+              $types.add`}`;
+
+              // todo unmarshal
+              $unmarshl.add`func(v *${variantGoTypeIdent}) UnmarshalJSON(b []byte) error {`;
+              $unmarshl.indented([
+                `panic("UnmarshalJSON not implemented for NewType")`,
+              ]);
+              $unmarshl.add`}`;
+              // todo marshal
+              $marshall.add`func(v ${variantGoTypeIdent}) MarshalJSON() ([]byte, error) {`;
+              $marshall.indented([
+                `panic("MarshalJSON not implemented for NewType")`,
+              ]);
+              $marshall.add`}`;
+              // typescript type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = { ${variantNameField}: ${innerTypeRef} };`;
+              $ns.add`export type ${variantGoTypeIdent} = { ${variantNameField}: ${innerTypeRef} };`;
               $ns.lines.push(...variantDocs);
               // create
-              $ns.add`export function ${variantIdent}(${formatTsList
+              $ns.add`export function ${variantGoTypeIdent}(${formatGoList
                 .map((f) => `${f.id}: ${f.fmt.src}`)
-                .join(", ")}): ${variantIdent} {`;
-              $ns.ad1`return { ${variantNameField}: [${formatTsList
+                .join(", ")}): ${variantGoTypeIdent} {`;
+              $ns.ad1`return { ${variantNameField}: [${formatGoList
                 .map((f) => f.id)
                 .join(", ")}] };`;
               $ns.add`}`;
               // match
               $nsMatchToObj.lines.push(...variantDocs);
-              $nsMatchToObj.add`${variantIdent}(inner: ${innerTypeRef}): R,`;
-              $nsMatchIfObjs.add`if (${vnStr} in input) return to.${variantIdent}(input[${vnStr}]);`;
+              $nsMatchToObj.add`${variantGoTypeIdent}(inner: ${innerTypeRef}): R,`;
+              $nsMatchIfObjs.add`if (${vnStr} in input) return to.${variantGoTypeIdent}(input[${vnStr}]);`;
             },
             Unit() {
               // type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = ${namedStr(variant)}`;
+              // type
+              $types.lines.push(...variantDocs);
+              $types.add`type ${variantGoTypeIdent} struct{}`;
+
+              // todo unmarshal
+              $unmarshl.add`func(v *${variantGoTypeIdent}) UnmarshalJSON(b []byte) error {`;
+              $unmarshl.indented([
+                `panic("UnmarshalJSON not implemented for NewType")`,
+              ]);
+              $unmarshl.add`}`;
+              // todo marshal
+              $marshall.add`func(v ${variantGoTypeIdent}) MarshalJSON() ([]byte, error) {`;
+              $marshall.indented([
+                `panic("MarshalJSON not implemented for NewType")`,
+              ]);
+              $marshall.add`}`;
+
+              $ns.add`export type ${variantGoTypeIdent} = ${namedStr(variant)}`;
               // create
               $ns.lines.push(...variantDocs);
-              $ns.add`export function ${variantIdent}(): ${variantIdent} {`;
+              $ns.add`export function ${variantGoTypeIdent}(): ${variantGoTypeIdent} {`;
               $ns.ad1`return ${namedStr(variant)};`;
               $ns.add`}`;
               // match
               $nsMatchToObj.lines.push(...variantDocs);
-              $nsMatchToObj.add`${variantIdent}(): R,`;
+              $nsMatchToObj.add`${variantGoTypeIdent}(): R,`;
               $nsMatchIfStrs.add`if (input === ${namedStr(
                 variant
-              )}) return to.${variantIdent}();`;
+              )}) return to.${variantGoTypeIdent}();`;
             },
             Struct({ fields }) {
-              const innerTypeRef = `${variantIdent}[${namedStr(variant)}]`;
+              const innerTypeRef = `${variantGoTypeIdent}[${namedStr(
+                variant
+              )}]`;
               // type
+              $types.lines.push(...variantDocs);
+              $types.add`type ${variantGoTypeIdent} struct {`;
+              $types.indented(["// todo shared fields def"]);
+              $types.add`}`;
+
+              // todo unmarshal
+              $unmarshl.add`func(v *${variantGoTypeIdent}) UnmarshalJSON(b []byte) error {`;
+              $unmarshl.indented([
+                `panic("UnmarshalJSON not implemented for NewType")`,
+              ]);
+              $unmarshl.add`}`;
+              // todo marshal
+              $marshall.add`func(v ${variantGoTypeIdent}) MarshalJSON() ([]byte, error) {`;
+              $marshall.indented([
+                `panic("MarshalJSON not implemented for NewType")`,
+              ]);
+              $marshall.add`}`;
+              // typescript type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = {`;
+              $ns.add`export type ${variantGoTypeIdent} = {`;
               $ns.scope(($$) => {
                 $$.add`${variantNameField}: {`;
-                typeFieldsFinish$($$, fields);
+                typeFieldsFinish$(createFormat, $$, fields);
               });
               $ns.add`}`;
               // create
               $ns.lines.push(...variantDocs);
-              $ns.add`export function ${variantIdent}(value: ${innerTypeRef}): ${variantIdent} {`;
+              $ns.add`export function ${variantGoTypeIdent}(value: ${innerTypeRef}): ${variantGoTypeIdent} {`;
               $ns.ad1`return { ${variantNameField}: value }`;
               $ns.add`}`;
               // match
               $nsMatchToObj.lines.push(...variantDocs);
-              $nsMatchToObj.add`${variantIdent}(inner: ${innerTypeRef}): R,`;
+              $nsMatchToObj.add`${variantGoTypeIdent}(inner: ${innerTypeRef}): R,`;
               $nsMatchIfObjs.add`if (${namedStr(
                 variant
-              )} in input) return to.${variantIdent}(input[${namedStr(
+              )} in input) return to.${variantGoTypeIdent}(input[${namedStr(
                 variant
               )}]);`;
             },
@@ -175,20 +282,19 @@ function convert(input: gen.Input): GeneratedDecl[] {
         $decl.lines.push(...typeCode.lines);
       },
       NewTypeStruct(format) {
-        const structIdent = ident(decl.id);
         const newTypeFormat = createFormat(format);
         // type
         $decl.lines.push(...docs);
         if (decl.serde_flags?.transparent) {
-          $decl.add`export type ${structIdent} = ${newTypeFormat.src}`;
+          $decl.add`export type ${goDeclIdent} = ${newTypeFormat.src}`;
         } else {
-          $decl.add`export type ${structIdent} = [${newTypeFormat.src}]`;
+          $decl.add`export type ${goDeclIdent} = [${newTypeFormat.src}]`;
         }
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(inner${
+        $decl.add`export function ${goDeclIdent}(inner${
           newTypeFormat.optional && "?"
-        }: ${newTypeFormat.src}): ${structIdent} {`;
+        }: ${newTypeFormat.src}): ${goDeclIdent} {`;
         if (decl.serde_flags?.transparent) {
           $decl.ad1`return inner;`;
         } else {
@@ -197,29 +303,27 @@ function convert(input: gen.Input): GeneratedDecl[] {
         $decl.add`}`;
       },
       TupleStruct(formats) {
-        const formatTsList = tupleFormats(formats);
-        const structIdent = ident(decl.id);
+        const formatTsList = tupleFormats(createFormat, formats);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export type ${structIdent} = [${formatTsList
+        $decl.add`export type ${goDeclIdent} = [${formatTsList
           .map((f) => f.fmt.src)
           .join(", ")}]`;
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(${formatTsList
+        $decl.add`export function ${goDeclIdent}(${formatTsList
           .map((f) => `${f.id}: ${f.fmt.src}`)
-          .join(", ")}): ${structIdent} {`;
+          .join(", ")}): ${goDeclIdent} {`;
         $decl.ad1`return [${formatTsList.map((f) => f.id).join(", ")}];`;
         $decl.add`}`;
       },
       UnitStruct() {
-        const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export interface ${structIdent} {} /* hmm unit struct? */`;
+        $decl.add`export interface ${goDeclIdent} {} /* hmm unit struct? */`;
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(): ${structIdent} {`;
+        $decl.add`export function ${goDeclIdent}(): ${goDeclIdent} {`;
         $decl.ad1`return {};`;
         $decl.add`}`;
       },
@@ -260,7 +364,11 @@ function splitByFlattened<T extends gen.Attrs>(items: T[]) {
 }
 
 /** Only for the types */
-function typeFieldsFinish$(root: Code, fields: gen.NamedField[]) {
+function typeFieldsFinish$(
+  createFormat: Formatter,
+  root: Code,
+  fields: gen.NamedField[]
+) {
   const $ = root.indented();
   const split = splitByFlattened(fields);
   for (const field of split.fields) {
@@ -291,63 +399,79 @@ function typeFieldsFinish$(root: Code, fields: gen.NamedField[]) {
   root.lastLine += ";";
 }
 
-function tupleFormats(formats: gen.Format[]) {
-  const aCp = "a".codePointAt(0)!;
+function tupleFormats(ftr: Formatter, formats: gen.Format[]) {
+  const aCp = "A".codePointAt(0)!;
   return formats.map((f, idx) => ({
-    fmt: createFormat(f),
+    fmt: ftr(f),
     id: String.fromCodePoint(aCp + idx),
   }));
 }
 
 const num = () => ({ src: "number" });
+const always = (src: string) => () => ({ src });
 
-const createFormat: (format: gen.Format) => {
+type Context = {
+  addSupportingTuple(prefix: string, tuple: gen.Format[]): string;
+};
+
+type Formatter = (format: gen.Format) => {
   src: string;
   optional?: boolean;
-} = gen.Format.apply({
-  TypeName: (value) => ({ src: ident(value) }),
-  I8: num,
-  I16: num,
-  I32: num,
-  I64: num,
-  I128: num,
-  ISIZE: num,
-  U8: num,
-  U16: num,
-  U32: num,
-  U64: num,
-  U128: num,
-  USIZE: num,
-  F32: num,
-  F64: num,
-  Bool: () => ({ src: "boolean" }),
-  Bytes: () => ({ src: "/* bytes? */ string" }),
-  Never: () => ({ src: "never" }),
-  Char: () => ({ src: "/* char */ string" }),
-  Map: ({ key, value }) => ({
-    src: `Record<${createFormat(key).src}, ${createFormat(value).src}>`,
-  }),
-  Unit: () => ({ src: "/* unit */ null" }),
-  Option: (format) => {
-    const inner = createFormat(format);
-    if (inner.optional) return inner;
-    return {
-      src: `${inner.src} | undefined | null`,
-      optional: true,
-    };
-  },
-  Incomplete: ({ debug }) => ({ src: `/* Incomplete: ${debug} */ unknown` }),
-  Seq: (seq) => ({
-    src: `Array<${createFormat(seq).src}>`,
-  }),
-  Tuple: (tuple) => ({
-    src: `[${tuple.map((tup) => createFormat(tup).src).join(", ")}]`,
-  }),
-  TupleArray: ({ content, size }) => ({
-    src: `[<${new Array(size).fill(createFormat(content).src).join(", ")}]`,
-  }),
-  Str: () => ({ src: "string" }),
-});
+};
+
+const createFormatter =
+  (context: Context): ((forIdent: string) => Formatter) =>
+  (forIdent) => {
+    const createFormat: Formatter = gen.Format.apply({
+      TypeName: (value) => ({ src: ident(value) }),
+      I8: always("int8"),
+      I16: always("int16"),
+      I32: always("int32"),
+      I64: always("int64"),
+      I128: always("big.Int"),
+      ISIZE: always("int"),
+      U8: always("uint8"),
+      U16: always("uint16"),
+      U32: always("uint32"),
+      U64: always("uint64"),
+      U128: always("big.Int"),
+      USIZE: always("uint"),
+      F32: always("float32"),
+      F64: always("float64"),
+      Bool: () => ({ src: "bool" }),
+      Bytes: () => ({ src: "/* bytes? */ []byte" }),
+      Never: () => ({
+        src: "/* Golang doesn't have a never type */ interface{}",
+      }),
+      Char: () => ({ src: "/* char */ byte" }),
+      Map: ({ key, value }) => ({
+        src: `map[${createFormat(key).src}]${createFormat(value).src}`,
+      }),
+      Unit: () => ({ src: "/* unit */ interface{}" }),
+      Option: (format) => {
+        const inner = createFormat(format);
+        if (inner.optional) return inner;
+        return {
+          src: `*${inner.src}`,
+          optional: true,
+        };
+      },
+      Incomplete: ({ debug }) => ({
+        src: `/* Incomplete: ${debug} */ interface{}`,
+      }),
+      Seq: (seq) => ({
+        src: `[]${createFormat(seq).src}`,
+      }),
+      Tuple: (tuple) => ({
+        src: context.addSupportingTuple(forIdent, tuple),
+      }),
+      TupleArray: ({ content, size }) => ({
+        src: `[${size}]${createFormat(content).src}`,
+      }),
+      Str: () => ({ src: "string" }),
+    });
+    return createFormat;
+  };
 
 function ident(id: string): string {
   return id.replace(/[^a-zA-Z0-9\$\_]/g, "$").replace(/^(\d)/, "$$1");

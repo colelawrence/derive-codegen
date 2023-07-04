@@ -2,7 +2,10 @@ import { gen } from "./gen.ts";
 
 export class Code {
   indentation = "  " + d`$$`;
-  constructor(public readonly lines: (Code | string)[] = []) {}
+  constructor(
+    public readonly lines: (Code | string)[] = [],
+    public readonly isGroup = false
+  ) {}
   static docString(docs: gen.Attrs, extraLine?: string): string[] {
     let found = "";
     if (docs.rust_docs) found += docs.rust_docs;
@@ -40,13 +43,12 @@ export class Code {
     if (found) {
       return [
         found.includes("\n")
-          ? "/**\n * " +
+          ? "// " +
             found
               .trim()
               .replace(/\n([^\n])/g, "\n $1")
-              .replace(/\n/g, "\n *") +
-            "\n */"
-          : "/** " + found.trim() + " */",
+              .replace(/\n/g, "\n//")
+          : "// " + found.trim(),
       ];
     } else {
       return [];
@@ -76,17 +78,28 @@ export class Code {
       this.lines.push(new Code([raw(arr, ...args)]));
     }
   }
-  indented(): Code {
+  grouped(lines?: (Code | string)[]): Code {
+    // const last = this.lines.findLast(() => true);
+    // if (last instanceof Code && last.group) {
+    //   if (lines) last.lines.push(...lines);
+    //   return last;
+    // }
+    const c = new Code(lines, true);
+    this.lines.push(c);
+    return c;
+  }
+  indented(lines?: (Code | string)[]): Code {
     const last = this.lines.findLast(() => true);
-    if (last instanceof Code) return last;
-    const c = new Code();
+    if (last instanceof Code && !last.isGroup) {
+      if (lines) last.lines.push(...lines);
+      return last;
+    }
+    const c = new Code(lines);
     this.lines.push(c);
     return c;
   }
   scope(fn: (c: Code) => void) {
-    const c = new Code();
-    this.lines.push(c);
-    fn(c);
+    fn(this.indented());
   }
   toStringIndented(indentation: string, level: number): string {
     const indent = indentation.repeat(level);
@@ -97,10 +110,18 @@ export class Code {
         if (str.length) str += delimiter + d`4`;
         str += line.replace(/\n([^\n])/g, delimiter + "$1");
       } else {
-        const toAdd = line.toStringIndented(indentation, level + 1);
-        if (toAdd.length) {
-          if (str.length) str += delimiter + indentation + d`5`;
-          str += toAdd;
+        if (line.isGroup) {
+          const toAdd = line.toStringIndented(indentation, level);
+          if (toAdd.length) {
+            if (str.length) str += delimiter + d`3`;
+            str += toAdd;
+          }
+        } else {
+          const toAdd = line.toStringIndented(indentation, level + 1);
+          if (toAdd.length) {
+            if (str.length) str += delimiter + indentation + d`5`;
+            str += toAdd;
+          }
         }
       }
     }

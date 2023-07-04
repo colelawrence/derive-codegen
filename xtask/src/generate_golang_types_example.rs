@@ -17,10 +17,21 @@ struct SimpleStruct {
 
 #[derive(Codegen)]
 #[codegen(tags = "simple-go", package = "simple")]
+struct SimpleTupleStruct(u8, i128, isize);
+
+#[derive(Codegen)]
+#[codegen(tags = "simple-go", package = "simple")]
 enum SimpleEnum {
     VUnit,
+    /// awdji VUnit2 has docs
+    VUnit2,
     VStr(String),
+    VStr2(String),
+    /// lkahal VNewTypeStruct has docs
+    VNewTypeStruct(SimpleStruct),
     VTuple(String, i64),
+    VTupleNested(String, (u8, i128, isize)),
+    /// 90uw8d VStruct variant has docs
     VStruct { vfield: String },
 }
 

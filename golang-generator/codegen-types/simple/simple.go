@@ -5,10 +5,12 @@ import (
 	"fmt"
 )
 
+// `#[codegen(package = "simple", tags = "simple-go")]`
 type SimpleEnum = SimpleEnumType
 
 type SimpleEnumType interface{ isSimpleEnumType() }
 
+// types
 type SimpleEnum_VUnit struct{}
 type SimpleEnum_VUnit2 struct{}
 type SimpleEnum_VStr string
@@ -19,7 +21,7 @@ type SimpleEnum_VTuple struct {
 	B int64
 }
 type SimpleEnum_VStruct struct {
-	Vfield string
+	Vfield map[string]uint
 }
 
 func (SimpleEnum_VUnit) isSimpleEnumType()          {}
