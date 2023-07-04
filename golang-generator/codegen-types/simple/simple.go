@@ -49,7 +49,7 @@ func (v *SimpleEnum_VUnit) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func SimpleEnum_[R any](
+func MatchSimpleEnum[R any](
 	fieldType SimpleEnumType,
 	vunit func(SimpleEnum_VUnit) (R, error),
 	vunit2 func(SimpleEnum_VUnit2) (R, error),
@@ -99,7 +99,7 @@ func SimpleEnum_[R any](
 }
 
 func getName(field SimpleEnumType) string {
-	name, _ := SimpleEnum_(field,
+	name, _ := MatchSimpleEnum(field,
 		func(setsv SimpleEnum_VUnit) (string, error) {
 			return "VUnit", nil
 		},
