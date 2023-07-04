@@ -12,9 +12,9 @@ type SimpleEnum struct {
 type SimpleEnumType interface{ isSimpleEnumType() }
 
 type SimpleEnumTypeSwitchVUnit struct{}
-type SimpleEnumTypeSwitchVStr struct {
-	Value string
-}
+type SimpleEnumTypeSwitchVStr string
+type SimpleEnumTypeSwitchVStr2 string
+type SimpleEnumTypeSwitchVNewTypeStruct SimpleEnumTypeSwitchVTuple
 type SimpleEnumTypeSwitchVTuple struct {
 	A string
 	B int64
@@ -23,10 +23,12 @@ type SimpleEnumTypeSwitchVStruct struct {
 	Vfield string
 }
 
-func (SimpleEnumTypeSwitchVUnit) isSimpleEnumType()   {}
-func (SimpleEnumTypeSwitchVTuple) isSimpleEnumType()  {}
-func (SimpleEnumTypeSwitchVStr) isSimpleEnumType()    {}
-func (SimpleEnumTypeSwitchVStruct) isSimpleEnumType() {}
+func (SimpleEnumTypeSwitchVUnit) isSimpleEnumType()          {}
+func (SimpleEnumTypeSwitchVTuple) isSimpleEnumType()         {}
+func (SimpleEnumTypeSwitchVStr) isSimpleEnumType()           {}
+func (SimpleEnumTypeSwitchVStr2) isSimpleEnumType()          {}
+func (SimpleEnumTypeSwitchVStruct) isSimpleEnumType()        {}
+func (SimpleEnumTypeSwitchVNewTypeStruct) isSimpleEnumType() {}
 
 func (v SimpleEnumTypeSwitchVUnit) MarshalJSON() ([]byte, error) {
 	return json.Marshal("VUnit")
@@ -47,36 +49,35 @@ func (v *SimpleEnumTypeSwitchVUnit) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-
-
 func SimpleEnumTypeSwitch[R any](
 	fieldType SimpleEnumType,
 	vunit func(SimpleEnumTypeSwitchVUnit) (R, error),
 	vstr func(SimpleEnumTypeSwitchVStr) (R, error),
+	vstr2 func(SimpleEnumTypeSwitchVStr2) (R, error),
 	vtuple func(SimpleEnumTypeSwitchVTuple) (R, error),
 	vstruct func(SimpleEnumTypeSwitchVStruct) (R, error),
 ) (res R, err error) {
-	switch fieldType.(type) {
+	switch v := fieldType.(type) {
 	case SimpleEnumTypeSwitchVUnit:
 		if vunit != nil {
-			return vunit(fieldType.(SimpleEnumTypeSwitchVUnit))
+			return vunit(v)
 		}
-
 	case SimpleEnumTypeSwitchVStr:
 		if vstr != nil {
-			return vstr(fieldType.(SimpleEnumTypeSwitchVStr))
+			return vstr(v)
 		}
-
+	case SimpleEnumTypeSwitchVStr2:
+		if vstr != nil {
+			return vstr2(v)
+		}
 	case SimpleEnumTypeSwitchVTuple:
 		if vtuple != nil {
-			return vtuple(fieldType.(SimpleEnumTypeSwitchVTuple))
+			return vtuple(v)
 		}
-
 	case SimpleEnumTypeSwitchVStruct:
 		if vstruct != nil {
-			return vstruct(fieldType.(SimpleEnumTypeSwitchVStruct))
+			return vstruct(v)
 		}
-
 	default:
 		return res, fmt.Errorf(
 			"unsupported custom field type: '%s'", fieldType)
@@ -87,14 +88,16 @@ func SimpleEnumTypeSwitch[R any](
 	return res, nil
 }
 
-func Test() {
-	var field SimpleEnumTypeSwitchVStr
-	name, err := SimpleEnumTypeSwitch(field,
+func getName(field SimpleEnumType) string {
+	name, _ := SimpleEnumTypeSwitch(field,
 		func(setsv SimpleEnumTypeSwitchVUnit) (string, error) {
 			return "VUnit", nil
 		},
 		func(setsv SimpleEnumTypeSwitchVStr) (string, error) {
 			return "VStr", nil
+		},
+		func(setsv SimpleEnumTypeSwitchVStr2) (string, error) {
+			return "VStr2", nil
 		},
 		func(setsv SimpleEnumTypeSwitchVTuple) (string, error) {
 			return "VTuple", nil
@@ -104,5 +107,6 @@ func Test() {
 		},
 	)
 
-	println("%s, %w", name, err)
+	// println("%s, %w", name, err)
+	return name
 }
