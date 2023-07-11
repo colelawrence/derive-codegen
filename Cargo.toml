@@ -1,8 +1,7 @@
 [workspace]
-members = ["./derive", "./code", "./types", "./xtask"]
+members = ["./derive", "./derive-codegen", "./code", "./xtask"]
 
 [workspace.package]
-version = "0.0.1"
 edition = "2021"
 authors = ["Cole Lawrence <cole@colelawrence.com>"]
 license = "Apache-2.0 OR MIT"
@@ -10,39 +9,8 @@ repository = "https://github.com/colelawrence/derive-codegen"
 documentation = "https://docs.rs/derive-codegen/"
 
 [workspace.dependencies]
-derive-codegen = { path = ".", version = "0.0.1" }
-i-codegen-code = { path = "./code", version = "0.0.1" }
-i-codegen-derive = { path = "./derive", version = "0.0.1" }
-i-codegen-types = { path = "./types", version = "0.0.1" }
+derive-codegen = { path = "./derive-codegen", version = "0.0.2" }
+i-codegen-code = { path = "./code", version = "0.0.2" }
+i-codegen-derive = { path = "./derive", version = "0.0.2" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-[package]
-name = "derive-codegen"
-description = "Highly-configurable code generation tooling based on Rust types."
-version = "0.0.1"
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-documentation.workspace = true
-readme = "README.md"
-keywords = ["serde", "build", "codegen", "macro", "schema"]
-categories = ["development-tools::build-utils"]
-exclude = ["/.github/**"]
-
-[features]
-generate = []
-generate-internal = ["generate"]
-default = ["generate"]
-
-[dependencies]
-serde.workspace = true
-serde_json.workspace = true
-i-codegen-derive.workspace = true
-i-codegen-code.workspace = true
-i-codegen-types.workspace = true
-rayon = "1.7.0"
-
-[dev-dependencies]
-insta = "1.30.0"

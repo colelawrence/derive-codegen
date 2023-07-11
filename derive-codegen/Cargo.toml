@@ -1,0 +1,28 @@
+[package]
+name = "derive-codegen"
+description = "Highly-configurable code generation tooling based on Rust types."
+version = "0.0.2"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+readme = "README.md"
+keywords = ["serde", "build", "codegen", "macro", "schema"]
+categories = ["development-tools::build-utils"]
+exclude = ["/.github/**"]
+
+[features]
+generate = []
+generate-internal = ["generate"]
+default = ["generate"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+i-codegen-derive.workspace = true
+i-codegen-code.workspace = true
+rayon = "1.7.0"
+
+[dev-dependencies]
+insta = "1.30.0"

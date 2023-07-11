@@ -1,3 +1,4 @@
+#![allow(unused)]
 use derive_codegen::{Codegen, Generation};
 use gumdrop::Options;
 use std::process::Command;

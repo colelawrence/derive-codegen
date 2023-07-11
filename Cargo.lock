@@ -71,11 +71,10 @@ dependencies = [
 
 [[package]]
 name = "derive-codegen"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "i-codegen-code",
  "i-codegen-derive",
- "i-codegen-types",
  "insta",
  "rayon",
  "serde",
@@ -122,9 +121,8 @@ checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
 name = "i-codegen-code"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
- "i-codegen-types",
  "linkme",
  "serde",
  "serde-reflection",
@@ -133,23 +131,15 @@ dependencies = [
 
 [[package]]
 name = "i-codegen-derive"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "i-codegen-code",
- "i-codegen-types",
  "proc-macro2",
  "quote",
  "serde",
  "serde_derive_internals",
  "serde_json",
  "syn 2.0.22",
-]
-
-[[package]]
-name = "i-codegen-types"
-version = "0.0.1"
-dependencies = [
- "serde",
 ]
 
 [[package]]

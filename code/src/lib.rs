@@ -1,17 +1,17 @@
 pub use linkme;
 use std::collections::BTreeSet;
 
+#[cfg(feature = "experimental")]
 use serde_reflection;
 
 pub mod utils;
+pub mod types;
 
 pub struct Context {
     tags: BTreeSet<String>,
-    tracer: Option<(
-        serde_reflection::Tracer,
-        Vec<(String, i_codegen_types::TypeRoot)>,
-    )>,
-    untraced: Vec<i_codegen_types::TypeRoot>,
+    #[cfg(feature = "experimental")]
+    tracer: Option<(Vec<(String, types::TypeRoot)>, serde_reflection::Tracer)>,
+    untraced: Vec<types::TypeRoot>,
     errors: Vec<String>,
 }
 
@@ -42,15 +42,15 @@ impl Context {
         }
 
         let mut type_root =
-            serde_json::from_str::<i_codegen_types::TypeRoot>(names_json)
+            serde_json::from_str::<types::TypeRoot>(names_json)
                 .expect("Incompatible versions of generate & code");
 
         type_root.file = file_name.to_string();
         type_root.line = line;
 
         match &type_root.inner.value {
-            i_codegen_types::ContainerFormat::Enum(_) => {
-                for i_codegen_types::Spanned {
+            types::ContainerFormat::Enum(_) => {
+                for types::Spanned {
                     value: (key, _value),
                     ..
                 } in type_root.inner.serde_attrs.iter()
@@ -64,7 +64,12 @@ impl Context {
             _ => {}
         }
 
+
+        #[cfg(not(feature = "experimental"))]
+        self.untraced.push(type_root);
+
         #[allow(unused)]
+        #[cfg(feature = "experimental")]
         if let Some((ref mut tracer, ref mut merge)) = self.tracer {
             type TODO = ();
             todo!("Trace simple enabled for serialize only?");
@@ -89,10 +94,11 @@ impl Context {
 pub static CODEGEN_ITEMS: [fn(&mut Context)] = [..];
 
 #[track_caller]
-pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
+pub fn get_types_by_tags(tags: &[String]) -> Vec<types::TypeRoot> {
     let mut context = Context {
         tags: tags.into_iter().cloned().map(String::from).collect(),
         errors: Vec::new(),
+        #[cfg(feature = "experimental")]
         tracer: None,
         // tracer: Some((Tracer::new(TracerConfig::default()), Vec::new())),
         untraced: Vec::new(),
@@ -110,9 +116,11 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
         }
     }
 
+    #[allow(unused_mut)]
     let Context {
         errors,
         untraced: mut type_roots,
+        #[cfg(feature = "experimental")]
         tracer,
         tags,
     } = context;
@@ -124,11 +132,12 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
         }
     }
 
+    #[cfg(feature = "experimental")]
     if let Some((tracer, merge)) = tracer {
         let registry = tracer.registry().expect("constructing registry");
         eprintln!("{registry:#?}");
-        type_roots.extend(merge.into_iter().map(|(name, mut type_root)| {
-            use i_codegen_types::{ContainerFormat, VariantFormat};
+        type_roots.extend(types.into_iter().map(|(name, mut type_root)| {
+            use types::{ContainerFormat, VariantFormat};
             use serde_reflection as sr;
             let format = registry.get(&name).expect("type exists in registry (if not, maybe alias unsupported)");
             match (&mut type_root.inner.value, format) {
@@ -204,8 +213,9 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<i_codegen_types::TypeRoot> {
     type_roots
 }
 
-fn format_to_format(input: &serde_reflection::Format) -> i_codegen_types::Format {
-    use i_codegen_types::Format as IFormat;
+#[cfg(feature = "experimental")]
+fn format_to_format(input: &serde_reflection::Format) -> types::Format {
+    use types::Format as IFormat;
     use serde_reflection::Format as SFormat;
     match input {
         SFormat::Variable(_) => unreachable!(),

@@ -1,4 +1,5 @@
 use i_codegen_code::types as st;
+use i_codegen_derive::CodegenInternal;
 use rayon::prelude::*;
 use serde::{self, Deserialize, Serialize};
 use st::TypeRoot;
@@ -631,30 +632,21 @@ impl<'a> GenerationCmd<'a> {
     }
 }
 
-#[track_caller]
 fn create_input_from_selection(selection: &Generation) -> Input {
     let tys = i_codegen_code::get_types_by_tags(&selection.tags);
-    let type_root_converters: HashMap<String, TypeRootConverter> =
-        tys.iter()
-            .map(|root| root.file.clone())
-            .collect::<HashSet<_>>()
-            .into_par_iter()
-            .map(|file_name| {
-                use std::io::Read;
-                let mut is_crlf = false;
-                let mut newlines = vec![0usize];
-                let mut current_byte = 0usize;
+    let type_root_converters: HashMap<String, TypeRootConverter> = tys
+        .iter()
+        .map(|root| root.file.clone())
+        .collect::<HashSet<_>>()
+        .into_par_iter()
+        .map(|file_name| {
+            use std::io::Read;
+            let mut is_crlf = false;
+            let mut newlines = vec![0usize];
+            let mut current_byte = 0usize;
 
-                for byte_result in
-            BufReader::new(
-                std::fs::File::open(&file_name)
-                .map_err(|err| {
-                    let manifest = std::env::var("CARGO_MANIFEST_DIR").ok();
-                    let pwd = std::env::current_dir().ok();
-                    format!("opening file {file_name:?} (relative to {pwd:?} or {manifest:?}) failed with {err:#?}")
-                })
-                .unwrap()
-            ).bytes()
+            for byte_result in
+                BufReader::new(std::fs::File::open(&file_name).expect("opened file")).bytes()
             {
                 match byte_result.expect("read next byte") {
                     b'\n' => {
@@ -667,17 +659,17 @@ fn create_input_from_selection(selection: &Generation) -> Input {
                 }
                 current_byte += 1;
             }
-                (
-                    file_name.clone(),
-                    TypeRootConverter {
-                        file_name,
-                        newlines,
-                        line_number_override: None,
-                        is_crlf,
-                    },
-                )
-            })
-            .collect();
+            (
+                file_name.clone(),
+                TypeRootConverter {
+                    file_name,
+                    newlines,
+                    line_number_override: None,
+                    is_crlf,
+                },
+            )
+        })
+        .collect();
 
     let declarations = tys
         .into_par_iter()

@@ -1,18 +1,21 @@
 [package]
 name = "i-codegen-code"
 description = "Common tools supporting the `derive-codegen` crate."
-version = "0.0.1"
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-documentation.workspace = true
+version = "0.0.2"
+edition = "2021"
+authors = ["Cole Lawrence <cole@colelawrence.com>"]
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/colelawrence/derive-codegen"
+documentation = "https://docs.rs/derive-codegen/"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+# experimental to attempt to more accurately locate locations in code.
+experimental = ["serde-reflection"]
 
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-i-codegen-types.workspace = true
 linkme = "0.3"
-serde-reflection = "0.3.6"
+serde-reflection = { version = "0.3.6", optional = true }

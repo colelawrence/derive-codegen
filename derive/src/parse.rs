@@ -1,5 +1,4 @@
-use i_codegen_code::utils;
-use i_codegen_types as st;
+use i_codegen_code::{utils, types as st};
 use std::collections::{BTreeMap, HashMap};
 
 // use crate::attr;
@@ -77,6 +76,7 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
 
     Ok(quote! {
         #[allow(non_upper_case_globals)]
+        #[allow(non_snake_case)]
         #[::#i_codegen_code_crate_q::linkme::distributed_slice(::#i_codegen_code_crate_q::CODEGEN_ITEMS)]
         #[linkme(crate = ::#i_codegen_code_crate_q::linkme)]
         fn #dummy(context: &mut ::#i_codegen_code_crate_q::Context) {
@@ -352,8 +352,8 @@ fn spanned<T>(spans: &[proc_macro2::Span], value: T) -> st::Spanned<T> {
                 let span = format!("{span:?}");
                 match utils::parse_span(&span) {
                     Ok(found) => Some(found),
-                    Err(err) => {
-                        eprintln!("Failed creating bytes for spanned. {err}");
+                    Err(_err) => {
+                        // eprintln!("Failed creating bytes for spanned. {_err}");
                         None
                     }
                 }
