@@ -1,4 +1,4 @@
-use i_codegen_code::{utils, types as st};
+use i_codegen_code::{types as st, utils};
 use std::collections::{BTreeMap, HashMap};
 
 // use crate::attr;
@@ -43,7 +43,7 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
     let mut root = st::TypeRoot {
         file: "unknown".to_string(),
         line: 0,
-        inner: pctxt.derive_named(container_format, ident, &input.attrs),
+        inner: pctxt.derive_named(container_format, ident, &input.attrs, Some(&container)),
         extras: Vec::new(),
     };
 
@@ -80,7 +80,7 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
         #[::#i_codegen_code_crate_q::linkme::distributed_slice(::#i_codegen_code_crate_q::CODEGEN_ITEMS)]
         #[linkme(crate = ::#i_codegen_code_crate_q::linkme)]
         fn #dummy(context: &mut ::#i_codegen_code_crate_q::Context) {
-            context.trace_type_root::<#ident>(#type_root_json_lit, file!(), line!(), &[#(#q_tags,)*]);
+            context.add_type_root(#type_root_json_lit, file!(), line!(), &[#(#q_tags,)*]);
         };
     })
 }
@@ -171,7 +171,7 @@ impl<'a> ParseContext {
     pub(crate) fn derive_enum(
         &mut self,
         variants: &[ast::Variant<'a>],
-        _container: &ast::Container,
+        container: &ast::Container,
     ) -> st::ContainerFormat {
         let mut map = BTreeMap::<u32, st::Named<st::VariantFormat>>::new();
         for (idx, variant) in variants.iter().enumerate() {
@@ -189,7 +189,12 @@ impl<'a> ParseContext {
             };
             map.insert(
                 idx as u32,
-                self.derive_named(inner, &variant.ident, &variant.original.attrs),
+                self.derive_named(
+                    inner,
+                    &variant.ident,
+                    &variant.original.attrs,
+                    Some(container),
+                ),
             );
         }
         st::ContainerFormat::Enum(map)
@@ -256,11 +261,27 @@ impl<'a> ParseContext {
         value: T,
         ident: &syn::Ident,
         syn_attrs: &[syn::Attribute],
+        container: Option<&ast::Container>,
         // serde_name: &serde_derive_internals::attr::Name,
     ) -> st::Named<T> {
         let ident_str = ident.to_string();
         let mut named = st::Named {
             rust_ident: spanned(&[ident.span()], ident_str),
+            rust_generics: container
+                .map(|c| {
+                    c.generics
+                        .params
+                        .iter()
+                        .filter_map(|g| match g {
+                            syn::GenericParam::Lifetime(_) => None,
+                            syn::GenericParam::Const(_) => None,
+                            syn::GenericParam::Type(typ) => {
+                                Some(spanned(&[typ.ident.span()], typ.ident.to_string()))
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
             rust_docs: get_doc_comments(syn_attrs),
             codegen_attrs: Vec::new(),
             codegen_flags: Vec::new(),
@@ -643,16 +664,10 @@ external entities like the file system or other processes."#,
                 match path[..] {
                     // Check
                     ["chrono", "DateTime"] => st::Format::Str,
-                    _ => {
-                        st::Format::TypeName(ts.ident.to_string().clone())
-                        // let ident = &ts.ident;
-                        // if !ts.args.is_empty() {
-                        //     let args = self.derive_syn_types(&ts.args);
-                        //     quote! { #ident<#(#args),*> }
-                        // } else {
-                        //     quote! {#ident}
-                        // }
-                    }
+                    _ => st::Format::TypeName {
+                        ident: ts.ident.to_string().clone(),
+                        generics: ts.args.iter().map(to_format).collect(),
+                    },
                 }
             }
         }
@@ -669,7 +684,10 @@ external entities like the file system or other processes."#,
         self.publish_builtins
             .entry(name.clone())
             .or_insert_with(|| st::Named::builtin(&name, docs, origin, or_with()));
-        st::Format::TypeName(name)
+        st::Format::TypeName {
+            ident: name,
+            generics: Vec::new(),
+        }
     }
 
     fn type_to_seq(&mut self, elem: &syn::Type) -> st::Format {
@@ -686,7 +704,7 @@ external entities like the file system or other processes."#,
         match &field.member {
             syn::Member::Named(named) => {
                 let format = self.field_to_format(field);
-                self.derive_named(format, &named, &field.original.attrs)
+                self.derive_named(format, &named, &field.original.attrs, None)
             }
             syn::Member::Unnamed(_) => todo!("unnamed field"),
         }
@@ -724,7 +742,7 @@ external entities like the file system or other processes."#,
 struct TypeFormat {
     ident: syn::Ident,
     args: Vec<syn::Type>,
-    path: Vec<syn::Ident>,          // full path
+    path: Vec<syn::Ident>, // full path
     #[allow(unused)]
     return_type: Option<syn::Type>, // only if function
 }

@@ -69,7 +69,10 @@ enum Format {
         debug: String,
     },
     /// The name of a container.
-    TypeName(String),
+    TypeName {
+        ident: String,
+        generics: Vec<Format>,
+    },
 
     // The formats of primitive types
     Unit,
@@ -175,6 +178,10 @@ struct Attrs {
     /// Documentation comments like this one.
     /// Future idea: Pass in tokens with links to other types.
     rust_docs: Option<String>,
+    /// Only specified for enums and structs
+    /// Future: Consider whether we should monomorphize on the codegen side...
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    rust_generics: Vec<(String, LocationID)>,
     /// e.g. `#[serde(rename = "newName")]`, your generator will need to describe what it supports
     #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
     serde_attrs: BTreeMap<String, (String, LocationID)>,
@@ -266,6 +273,7 @@ impl TypeRootConverter {
             codegen_flags,
             rust_docs,
             rust_ident,
+            rust_generics,
             serde_attrs,
             serde_flags,
             value,
@@ -276,6 +284,10 @@ impl TypeRootConverter {
             value,
             Attrs {
                 rust_docs,
+                rust_generics: rust_generics
+                    .into_iter()
+                    .map(|gen| self.location_id(gen))
+                    .collect(),
                 serde_attrs: {
                     let mut bt = BTreeMap::<String, (String, LocationID)>::new();
                     for st::Spanned {
@@ -320,7 +332,13 @@ impl TypeRootConverter {
     fn format_to_format(&self, format: st::Format) -> Format {
         match format {
             st::Format::Incomplete { debug } => Format::Incomplete { debug },
-            st::Format::TypeName(name) => Format::TypeName(name),
+            st::Format::TypeName { ident, generics } => Format::TypeName {
+                ident,
+                generics: generics
+                    .into_iter()
+                    .map(|format| self.format_to_format(format))
+                    .collect(),
+            },
             st::Format::Unit => Format::Unit,
             st::Format::Bool => Format::Bool,
             st::Format::I8 => Format::I8,
@@ -539,6 +557,14 @@ impl<'a> GenerationCmd<'a> {
         self
     }
 
+    fn get_output_path(&self) -> PathBuf {
+        if let Some(ref rel) = self.relative_to {
+            rel.join(self.output_path.clone().unwrap_or_else(|| ".".into()))
+        } else {
+            self.output_path.clone().unwrap_or_else(|| ".".into())
+        }
+    }
+
     #[track_caller]
     pub fn print(&mut self) {
         let output = self.generate();
@@ -549,12 +575,7 @@ impl<'a> GenerationCmd<'a> {
             eprintln!("Output error:\n{err:?}")
         }
 
-        let relative_to = if let Some(ref rel) = self.relative_to {
-            rel.join(self.output_path.clone().unwrap_or_else(|| ".".into()))
-        } else {
-            self.output_path.clone().unwrap_or_else(|| ".".into())
-        };
-
+        let relative_to = self.get_output_path();
         for output_file in output.files {
             let write_path = relative_to.join(output_file.path);
             println!("\x1b[48:2:255:165:0m{}\x1b[0m", write_path.display());
@@ -572,8 +593,7 @@ impl<'a> GenerationCmd<'a> {
             eprintln!("Output error:\n{err:?}")
         }
 
-        let relative_to = self.output_path.clone().unwrap_or_else(|| ".".into());
-
+        let relative_to = self.get_output_path();
         for output_file in output.files {
             let write_path = relative_to.join(output_file.path);
             if let Some(parent) = write_path.parent() {

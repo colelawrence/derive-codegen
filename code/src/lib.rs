@@ -17,16 +17,24 @@ pub struct Context {
 
 impl Context {
     // pub fn trace_type_root<'de, T: serde::Deserialize<'de>>(
-    pub fn trace_type_root<T>(
+    pub fn add_type_root(
         &mut self,
         names_json: &str,
         file_name: &str,
         line: u32,
         tags: &[&str],
     ) -> () {
+        if !self.should_include(tags) {
+            return;
+        }
+        let type_root = self.create_type_root(names_json, file_name, line);
+        self.untraced.push(type_root);
+    }
+
+    fn should_include(&self, tags: &[&str]) -> bool {
         if tags.is_empty() {
             if !self.tags.is_empty() {
-                return;
+                return false;
             }
         } else {
             let mut found = false;
@@ -37,16 +45,39 @@ impl Context {
                 }
             }
             if !found {
-                return;
+                return false;
             }
         }
+        return true;
+    }
 
+    fn create_type_root(
+        &mut self,
+        names_json: &str,
+        file_name: &str,
+        line: u32,
+    ) -> types::TypeRoot {
         let mut type_root =
             serde_json::from_str::<types::TypeRoot>(names_json)
                 .expect("Incompatible versions of generate & code");
 
         type_root.file = file_name.to_string();
         type_root.line = line;
+        type_root
+    }
+
+    #[cfg(features = "experimental")]
+    pub fn trace_type_root<T>(
+        &mut self,
+        names_json: &str,
+        file_name: &str,
+        line: u32,
+        tags: &[&str],
+    ) -> () {
+        if !self.should_include(tags) {
+            return;
+        }
+        let type_root = self.create_type_root(names_json, file_name, line);
 
         match &type_root.inner.value {
             types::ContainerFormat::Enum(_) => {
@@ -56,7 +87,8 @@ impl Context {
                 } in type_root.inner.serde_attrs.iter()
                 {
                     if &key.value == "tag" || &key.value == "content" {
-                        self.untraced.push(type_root);
+                        // cannot be traced...
+                        eprintln!("We can't trace enums with tag and content!");
                         return;
                     }
                 }
@@ -64,12 +96,6 @@ impl Context {
             _ => {}
         }
 
-
-        #[cfg(not(feature = "experimental"))]
-        self.untraced.push(type_root);
-
-        #[allow(unused)]
-        #[cfg(feature = "experimental")]
         if let Some((ref mut tracer, ref mut merge)) = self.tracer {
             type TODO = ();
             todo!("Trace simple enabled for serialize only?");

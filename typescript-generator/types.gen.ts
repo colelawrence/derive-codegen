@@ -48,7 +48,9 @@ export function Output(inner: Output): Output {
 }
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export type OutputFile = {
+  /** Example: `./some-dir/filename.txt` */
   path: string;
+  /** Example: `"Hello world"` */
   source: string;
 };
 /** `#[codegen(tags = "derive-codegen-internal")]` */
@@ -78,7 +80,7 @@ export namespace Format {
     // callbacks
     Incomplete(inner: Incomplete["Incomplete"]): R,
     /** The name of a container. */
-    TypeName(inner: TypeName["TypeName"]): R;
+    TypeName(inner: TypeName["TypeName"]): R,
     Unit(): R,
     Bool(): R,
     I8(): R,
@@ -170,12 +172,14 @@ export namespace Format {
   }
   /** The name of a container. */
   export type TypeName = {
-    /** The name of a container. */
-    TypeName: string
-  };
+    TypeName: {
+      ident: string;
+      generics: Array<Format>;
+    };
+  }
   /** The name of a container. */
-  export function TypeName(value: string): TypeName {
-    return { TypeName: value };
+  export function TypeName(value: TypeName["TypeName"]): TypeName {
+    return { TypeName: value }
   }
   export type Unit = "Unit"
   export function Unit(): Unit {
@@ -587,6 +591,13 @@ export type Attrs = {
    * Future idea: Pass in tokens with links to other types.
    */
   rust_docs?: string | undefined | null | null | undefined;
+  /**
+   * Only specified for enums and structs
+   * Future: Consider whether we should monomorphize on the codegen side...
+   *
+   * `#[serde(default, skip_serializing_if = "Vec::is_empty")]`
+   */
+  rust_generics?: Array<[string, LocationID]> | null | undefined;
   /**
    * e.g. `#[serde(rename = "newName")]`, your generator will need to describe what it supports
    *

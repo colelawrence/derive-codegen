@@ -7,17 +7,25 @@ function convert(input: gen.Input): gen.Output {
   for (const decl of input.declarations) {
     const $decl = new Code();
     const docs = Code.docString(decl);
+    // Part of generics decl
+    const generics = decl.rust_generics?.length
+      ? `<${decl.rust_generics.map((g) => g[0]).join(", ")}>`
+      : "";
+    // after any existing generics
+    const genericsCont = decl.rust_generics?.length
+      ? `, ${decl.rust_generics.map((g) => g[0]).join(", ")}`
+      : "";
 
     gen.ContainerFormat.match(decl.container_kind, {
       Struct({ fields }) {
         const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export type ${structIdent} = {`;
+        $decl.add`export type ${structIdent}${generics} = {`;
         typeFieldsFinish$($decl, fields);
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(inner: ${structIdent}): ${structIdent} {`;
+        $decl.add`export function ${structIdent}${generics}(inner: ${structIdent}${generics}): ${structIdent}${generics} {`;
         $decl.ad1`return inner;`;
         $decl.add`}`;
       },
@@ -30,13 +38,13 @@ function convert(input: gen.Input): gen.Output {
           `if (typeof input !== "object" || input == null) throw new TypeError("Unexpected non-object for input");`,
         ]);
         const $ns = new Code([
-          `export type ApplyFns<R> = {`,
+          `export type ApplyFns<R${genericsCont}> = {`,
           $nsMatchToObj,
           `}`,
           `/** Match helper for {@link ${enumIdent}} */`,
-          `export function apply<R>(`,
-          new Code([`to: ApplyFns<R>,`]),
-          `): (input: ${enumIdent}) => R {`,
+          `export function apply<R${genericsCont}>(`,
+          new Code([`to: ApplyFns<R${genericsCont}>,`]),
+          `): (input: ${enumIdent}${generics}) => R {`,
           new Code([
             `return function _match(input): R {`,
             $nsMatchIfStrs,
@@ -47,7 +55,10 @@ function convert(input: gen.Input): gen.Output {
           `}`,
           `/** Match helper for {@link ${enumIdent}} */`,
           `export function match<R>(`,
-          new Code([`input: ${enumIdent},`, `to: ApplyFns<R>,`]),
+          new Code([
+            `input: ${enumIdent}${generics},`,
+            `to: ApplyFns<R${genericsCont}>,`,
+          ]),
           `): R {`,
           new Code([`return apply(to)(input)`]),
           `}`,
@@ -61,7 +72,7 @@ function convert(input: gen.Input): gen.Output {
           `}`,
           // type
           ...docs,
-          `export type ${enumIdent} =`,
+          `export type ${enumIdent}${generics} =`,
         ]);
 
         // TODO: handle different representations properly
@@ -77,20 +88,20 @@ function convert(input: gen.Input): gen.Output {
               const newTypeTs = createFormat(format);
               // type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = {`;
+              $ns.add`export type ${variantIdent}${generics} = {`;
               $ns.indented().lines.push(...variantDocs);
               $ns.ad1`${variantNameField}: ${newTypeTs.src}`;
               $ns.add`};`;
               // create
               $ns.lines.push(...variantDocs);
-              $ns.add`export function ${variantIdent}(value${
+              $ns.add`export function ${variantIdent}${generics}(value${
                 newTypeTs.optional && "?"
-              }: ${newTypeTs.src}): ${variantIdent} {`;
+              }: ${newTypeTs.src}): ${variantIdent}${generics} {`;
               $ns.ad1`return { ${variantNameField}: value };`;
               $ns.add`}`;
               // match callback
               $nsMatchToObj.lines.push(...variantDocs);
-              $nsMatchToObj.add`${variantIdent}(inner: ${variantIdent}[${namedStr(
+              $nsMatchToObj.add`${variantIdent}(inner: ${variantIdent}${generics}[${namedStr(
                 variant
               )}]): R;`;
               // match if else
@@ -108,12 +119,12 @@ function convert(input: gen.Input): gen.Output {
                 .join(", ")}]`;
               // type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = { ${variantNameField}: ${innerTypeRef} };`;
+              $ns.add`export type ${variantIdent}${generics} = { ${variantNameField}: ${innerTypeRef} };`;
               $ns.lines.push(...variantDocs);
               // create
-              $ns.add`export function ${variantIdent}(${formatTsList
+              $ns.add`export function ${variantIdent}${generics}(${formatTsList
                 .map((f) => `${f.id}: ${f.fmt.src}`)
-                .join(", ")}): ${variantIdent} {`;
+                .join(", ")}): ${variantIdent}${generics} {`;
               $ns.ad1`return { ${variantNameField}: [${formatTsList
                 .map((f) => f.id)
                 .join(", ")}] };`;
@@ -126,10 +137,12 @@ function convert(input: gen.Input): gen.Output {
             Unit() {
               // type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = ${namedStr(variant)}`;
+              $ns.add`export type ${variantIdent}${generics} = ${namedStr(
+                variant
+              )}`;
               // create
               $ns.lines.push(...variantDocs);
-              $ns.add`export function ${variantIdent}(): ${variantIdent} {`;
+              $ns.add`export function ${variantIdent}${generics}(): ${variantIdent}${generics} {`;
               $ns.ad1`return ${namedStr(variant)};`;
               $ns.add`}`;
               // match
@@ -143,7 +156,7 @@ function convert(input: gen.Input): gen.Output {
               const innerTypeRef = `${variantIdent}[${namedStr(variant)}]`;
               // type
               $ns.lines.push(...variantDocs);
-              $ns.add`export type ${variantIdent} = {`;
+              $ns.add`export type ${variantIdent}${generics} = {`;
               $ns.scope(($$) => {
                 $$.add`${variantNameField}: {`;
                 typeFieldsFinish$($$, fields);
@@ -151,7 +164,7 @@ function convert(input: gen.Input): gen.Output {
               $ns.add`}`;
               // create
               $ns.lines.push(...variantDocs);
-              $ns.add`export function ${variantIdent}(value: ${innerTypeRef}): ${variantIdent} {`;
+              $ns.add`export function ${variantIdent}${generics}(value: ${innerTypeRef}): ${variantIdent} {`;
               $ns.ad1`return { ${variantNameField}: value }`;
               $ns.add`}`;
               // match
@@ -174,15 +187,15 @@ function convert(input: gen.Input): gen.Output {
         // type
         $decl.lines.push(...docs);
         if (decl.serde_flags?.transparent) {
-          $decl.add`export type ${structIdent} = ${newTypeFormat.src}`;
+          $decl.add`export type ${structIdent}${generics} = ${newTypeFormat.src}`;
         } else {
-          $decl.add`export type ${structIdent} = [${newTypeFormat.src}]`;
+          $decl.add`export type ${structIdent}${generics} = [${newTypeFormat.src}]`;
         }
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(inner${
+        $decl.add`export function ${structIdent}${generics}(inner${
           newTypeFormat.optional && "?"
-        }: ${newTypeFormat.src}): ${structIdent} {`;
+        }: ${newTypeFormat.src}): ${structIdent}${generics} {`;
         if (decl.serde_flags?.transparent) {
           $decl.ad1`return inner;`;
         } else {
@@ -195,14 +208,14 @@ function convert(input: gen.Input): gen.Output {
         const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export type ${structIdent} = [${formatTsList
+        $decl.add`export type ${structIdent}${generics} = [${formatTsList
           .map((f) => f.fmt.src)
           .join(", ")}]`;
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(${formatTsList
+        $decl.add`export function ${structIdent}${generics}(${formatTsList
           .map((f) => `${f.id}: ${f.fmt.src}`)
-          .join(", ")}): ${structIdent} {`;
+          .join(", ")}): ${structIdent}${generics} {`;
         $decl.ad1`return [${formatTsList.map((f) => f.id).join(", ")}];`;
         $decl.add`}`;
       },
@@ -210,10 +223,10 @@ function convert(input: gen.Input): gen.Output {
         const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export interface ${structIdent} {} /* hmm unit struct? */`;
+        $decl.add`export interface ${structIdent}${generics} {} /* hmm unit struct? */`;
         // create
         $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}(): ${structIdent} {`;
+        $decl.add`export function ${structIdent}${generics}(): ${structIdent} {`;
         $decl.ad1`return {};`;
         $decl.add`}`;
       },
@@ -292,7 +305,12 @@ const createFormat: (format: gen.Format) => {
   src: string;
   optional?: boolean;
 } = gen.Format.apply({
-  TypeName: (value) => ({ src: ident(value) }),
+  TypeName: (value) => {
+    const generics = value.generics.length
+      ? `<${value.generics.map((g) => createFormat(g).src).join(", ")}>`
+      : "";
+    return { src: `${ident(value.ident)}${generics}` };
+  },
   I8: num,
   I16: num,
   I32: num,

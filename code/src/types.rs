@@ -44,7 +44,10 @@ pub enum Format {
         debug: String,
     },
     /// The name of a container.
-    TypeName(String),
+    TypeName {
+        ident: String,
+        generics: Vec<Format>,
+    },
 
     // The formats of primitive types
     Unit,
@@ -115,16 +118,25 @@ impl Format {
             _ => false,
         }
     }
-    pub fn is_typename(&self) -> Option<&str> {
+    pub fn is_typename(&self) -> Option<(&str, &[Format])> {
         match self {
-            Format::TypeName(name) => Some(name),
+            Format::TypeName { ident, generics } => Some((&ident, &generics)),
             _ => None,
         }
     }
     pub fn as_ident(&self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
             Format::Incomplete { debug } => todo!("Unknown ident incomplete: {debug}"),
-            Format::TypeName(name) => return Cow::Owned(name.clone()),
+            Format::TypeName { ident, generics } => {
+                return Cow::Owned({
+                    let mut buf = format!("{ident}");
+                    for gen in generics.iter() {
+                        buf.push('_');
+                        buf.push_str(&gen.as_ident());
+                    }
+                    buf
+                })
+            }
             Format::Unit => "Nil",
             Format::Bool => "Bool",
             Format::I8 => "I8",
@@ -250,6 +262,8 @@ pub enum VariantFormat {
 pub struct Named<T> {
     #[serde(rename = "id")]
     pub rust_ident: Spanned<String>,
+    #[serde(rename = "gn")]
+    pub rust_generics: Vec<Spanned<String>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     #[serde(rename = "docs")]
     pub rust_docs: Option<String>,
@@ -276,6 +290,7 @@ impl<T> Named<T> {
                 value: ident.to_string(),
                 bytes: bytes.unwrap_or_default(),
             },
+            rust_generics: Vec::new(),
             rust_docs: {
                 let docs = docs.trim();
                 if docs.is_empty() {
