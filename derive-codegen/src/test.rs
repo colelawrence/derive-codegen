@@ -186,7 +186,10 @@ fn test_generate() {
                   "id_location": "L(derive-codegen/src/test.rs:84 #B2202-B2208)",
                   "rust_docs": null,
                   "format": {
-                    "TypeName": "Result_OkBasicallyOther_ErrStr"
+                    "TypeName": {
+                      "ident": "Result_OkBasicallyOther_ErrStr",
+                      "generics": []
+                    }
                   }
                 }
               ]
@@ -207,7 +210,10 @@ fn test_generate() {
                   "rust_docs": "Contains the success value",
                   "variant_format": {
                     "NewType": {
-                      "TypeName": "BasicallyOther"
+                      "TypeName": {
+                        "ident": "BasicallyOther",
+                        "generics": []
+                      }
                     }
                   }
                 },

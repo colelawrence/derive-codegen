@@ -9,8 +9,8 @@ repository = "https://github.com/colelawrence/derive-codegen"
 documentation = "https://docs.rs/derive-codegen/"
 
 [workspace.dependencies]
-derive-codegen = { path = "./derive-codegen", version = "0.0.3" }
-i-codegen-code = { path = "./code", version = "0.0.2" }
-i-codegen-derive = { path = "./derive", version = "0.0.2" }
+derive-codegen = { path = "./derive-codegen", version = "0.0.4" }
+i-codegen-code = { path = "./code", version = "0.0.3" }
+i-codegen-derive = { path = "./derive", version = "0.0.3" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
