@@ -1,7 +1,7 @@
 [package]
 name = "derive-codegen"
 description = "Highly-configurable code generation tooling based on Rust types."
-version = "0.0.2"
+version = "0.0.3"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

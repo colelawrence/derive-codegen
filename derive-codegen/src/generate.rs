@@ -487,6 +487,7 @@ pub struct Generation {
 }
 
 pub struct GenerationCmd<'a> {
+    relative_to: Option<PathBuf>,
     selection: &'a Generation,
     command: GenCommand<'a>,
     output_path: Option<PathBuf>,
@@ -506,6 +507,7 @@ impl Generation {
 
     pub fn pipe_into<'a>(&'a self, command: &'a mut Command) -> GenerationCmd<'a> {
         GenerationCmd {
+            relative_to: command.get_current_dir().map(|dir| dir.to_owned()),
             command: GenCommand::PipeInto(command),
             output_path: None,
             selection: self,
@@ -514,6 +516,7 @@ impl Generation {
 
     pub fn as_arg_of<'a>(&'a self, command: &'a mut Command) -> GenerationCmd<'a> {
         GenerationCmd {
+            relative_to: command.get_current_dir().map(|dir| dir.to_owned()),
             command: GenCommand::Arg(command),
             output_path: None,
             selection: self,
@@ -530,6 +533,7 @@ impl Generation {
 }
 
 impl<'a> GenerationCmd<'a> {
+    /// Relative to current directory of teh command passed in
     pub fn with_output_path<P: Into<PathBuf>>(&mut self, path: P) -> &mut Self {
         self.output_path = Some(path.into());
         self
@@ -545,7 +549,11 @@ impl<'a> GenerationCmd<'a> {
             eprintln!("Output error:\n{err:?}")
         }
 
-        let relative_to = self.output_path.clone().unwrap_or_else(|| ".".into());
+        let relative_to = if let Some(ref rel) = self.relative_to {
+            rel.join(self.output_path.clone().unwrap_or_else(|| ".".into()))
+        } else {
+            self.output_path.clone().unwrap_or_else(|| ".".into())
+        };
 
         for output_file in output.files {
             let write_path = relative_to.join(output_file.path);
@@ -634,6 +642,8 @@ impl<'a> GenerationCmd<'a> {
 
 fn create_input_from_selection(selection: &Generation) -> Input {
     let tys = i_codegen_code::get_types_by_tags(&selection.tags);
+    let current_directory = std::env::current_dir()
+        .expect("getting current directory in order to find source files for line number mapping");
     let type_root_converters: HashMap<String, TypeRootConverter> = tys
         .iter()
         .map(|root| root.file.clone())
@@ -645,9 +655,33 @@ fn create_input_from_selection(selection: &Generation) -> Input {
             let mut newlines = vec![0usize];
             let mut current_byte = 0usize;
 
-            for byte_result in
-                BufReader::new(std::fs::File::open(&file_name).expect("opened file")).bytes()
-            {
+            let file = {
+                match std::fs::File::open(&file_name) {
+                    Ok(found) => found,
+                    Err(_) => {
+                        // try going up on directory... hacky...
+                        match std::fs::File::open(
+                            &current_directory.parent().unwrap().join(&file_name),
+                        ) {
+                            Ok(file) => file,
+                            Err(_err) => {
+                                // eprintln!("opening file {file_name:?} (relative to: {current_directory:?}): {_err:?}");
+                                return (
+                                    file_name.clone(),
+                                    TypeRootConverter {
+                                        file_name,
+                                        newlines,
+                                        line_number_override: None,
+                                        is_crlf,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+            };
+
+            for byte_result in BufReader::new(file).bytes() {
                 match byte_result.expect("read next byte") {
                     b'\n' => {
                         newlines.push(current_byte + 1);
