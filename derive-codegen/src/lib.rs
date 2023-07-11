@@ -1,5 +1,4 @@
 pub use generate::{Generation, GenerationCmd};
-#[macro_use]
 pub extern crate i_codegen_derive;
 // re-export macros (note pub)
 #[doc(hidden)]
