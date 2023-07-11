@@ -94,18 +94,18 @@ fn test_generate() {
       "declarations": [
         {
           "id": "Basically",
-          "id_location": "L(src/test.rs:64 #B1834-B1843)",
+          "id_location": "L(derive-codegen/src/test.rs:65 #B1852-B1861)",
           "rust_docs": "Test doc comment\nSecond line\n```sh\nSome code\n```\nReference to [BasicEnum].",
           "serde_attrs": {
             "rename": [
               "basically",
-              "L(src/test.rs:64 #B1787-B1798)"
+              "L(derive-codegen/src/test.rs:65 #B1805-B1816)"
             ]
           },
           "codegen_attrs": {
             "tags": [
               "docs",
-              "L(src/test.rs:64 #B1818-B1824)"
+              "L(derive-codegen/src/test.rs:65 #B1836-B1842)"
             ]
           },
           "container_kind": {
@@ -113,13 +113,13 @@ fn test_generate() {
               "fields": [
                 {
                   "id": "a",
-                  "id_location": "L(src/test.rs:64 #B1870-B1871)",
+                  "id_location": "L(derive-codegen/src/test.rs:65 #B1888-B1889)",
                   "rust_docs": "Doc comment",
                   "format": "USIZE"
                 },
                 {
                   "id": "b",
-                  "id_location": "L(src/test.rs:64 #B1884-B1885)",
+                  "id_location": "L(derive-codegen/src/test.rs:65 #B1902-B1903)",
                   "rust_docs": null,
                   "format": "Str"
                 }
@@ -129,12 +129,12 @@ fn test_generate() {
         },
         {
           "id": "BasicallyOther",
-          "id_location": "L(src/test.rs:73 #B1963-B1977)",
+          "id_location": "L(derive-codegen/src/test.rs:74 #B1981-B1995)",
           "rust_docs": null,
           "codegen_attrs": {
             "tags": [
               "docs",
-              "L(src/test.rs:73 #B1947-B1953)"
+              "L(derive-codegen/src/test.rs:74 #B1965-B1971)"
             ]
           },
           "container_kind": {
@@ -142,16 +142,16 @@ fn test_generate() {
               "fields": [
                 {
                   "id": "usize_opt",
-                  "id_location": "L(src/test.rs:73 #B2069-B2078)",
+                  "id_location": "L(derive-codegen/src/test.rs:74 #B2087-B2096)",
                   "rust_docs": "Other option",
                   "serde_attrs": {
                     "alias": [
                       "usize",
-                      "L(src/test.rs:73 #B2055-B2062)"
+                      "L(derive-codegen/src/test.rs:74 #B2073-B2080)"
                     ],
                     "rename": [
                       "usizeOpt",
-                      "L(src/test.rs:73 #B2022-B2032)"
+                      "L(derive-codegen/src/test.rs:74 #B2040-B2050)"
                     ]
                   },
                   "format": {
@@ -160,7 +160,7 @@ fn test_generate() {
                 },
                 {
                   "id": "b",
-                  "id_location": "L(src/test.rs:73 #B2099-B2100)",
+                  "id_location": "L(derive-codegen/src/test.rs:74 #B2117-B2118)",
                   "rust_docs": null,
                   "format": "Str"
                 }
@@ -170,12 +170,12 @@ fn test_generate() {
         },
         {
           "id": "ActionResult",
-          "id_location": "L(src/test.rs:83 #B2178-B2190)",
+          "id_location": "L(derive-codegen/src/test.rs:84 #B2196-B2208)",
           "rust_docs": null,
           "codegen_attrs": {
             "tags": [
               "docs",
-              "L(src/test.rs:83 #B2162-B2168)"
+              "L(derive-codegen/src/test.rs:84 #B2180-B2186)"
             ]
           },
           "container_kind": {
@@ -183,7 +183,7 @@ fn test_generate() {
               "fields": [
                 {
                   "id": "result",
-                  "id_location": "L(src/test.rs:83 #B2197-B2203)",
+                  "id_location": "L(derive-codegen/src/test.rs:84 #B2215-B2221)",
                   "rust_docs": null,
                   "format": {
                     "TypeName": "Result_OkBasicallyOther_ErrStr"
@@ -195,7 +195,7 @@ fn test_generate() {
         },
         {
           "id": "Result_OkBasicallyOther_ErrStr",
-          "id_location": "L(src/test.rs:83 #B2205-B2211)",
+          "id_location": "L(derive-codegen/src/test.rs:84 #B2223-B2229)",
           "rust_docs": "`Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).",
           "container_kind": {
             "Enum": {
@@ -203,7 +203,7 @@ fn test_generate() {
               "variants": [
                 {
                   "id": "Ok",
-                  "id_location": "L(src/test.rs:83 #B2205-B2211)",
+                  "id_location": "L(derive-codegen/src/test.rs:84 #B2223-B2229)",
                   "rust_docs": "Contains the success value",
                   "variant_format": {
                     "NewType": {
@@ -213,7 +213,7 @@ fn test_generate() {
                 },
                 {
                   "id": "Err",
-                  "id_location": "L(src/test.rs:83 #B2205-B2211)",
+                  "id_location": "L(derive-codegen/src/test.rs:84 #B2223-B2229)",
                   "rust_docs": "Contains the error value",
                   "variant_format": {
                     "NewType": "Str"
