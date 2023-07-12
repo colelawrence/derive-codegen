@@ -36,6 +36,8 @@ export class Code {
         ")]`";
     }
     if (includeLocationID) {
+      // Future: You could also maybe create a configurable declaration map so jumping to definition
+      // can go to the actual Rust source file.
       const [prefix, loc] = includeLocationID;
       // Sample: `L(hn-design-tools/src/color.rs:16 #B6019-B6033)`
       const link = loc
