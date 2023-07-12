@@ -1,12 +1,22 @@
+import { parseArgs } from "./parseArgs.ts";
 import { Code } from "./Code.ts";
 import { gen } from "./gen.ts";
+
+const args = parseArgs({
+  fileName: "What to call the file with all the declarations",
+  includeLocationsRelativeTo: "Include links to the original source with this prefix",
+});
 
 function convert(input: gen.Input): gen.Output {
   const generated = new Code();
   console.error("Number of declarations: ", input.declarations.length);
   for (const decl of input.declarations) {
     const $decl = new Code();
-    const docs = Code.docString(decl);
+    const docs = Code.docString(
+      decl,
+      undefined,
+      args.includeLocationsRelativeTo && [args.includeLocationsRelativeTo, decl.id_location]
+    );
     // Part of generics decl
     const generics = decl.rust_generics?.length
       ? `<${decl.rust_generics.map((g) => g[0]).join(", ")}>`
@@ -238,7 +248,7 @@ function convert(input: gen.Input): gen.Output {
     errors: [],
     files: [
       {
-        path: "types.ts",
+        path: args.fileName ?? "types.ts",
         source: generated.toString(),
       },
     ],
@@ -369,4 +379,4 @@ function namedStr(named: { id: string } & gen.Attrs): string {
   return JSON.stringify(nam);
 }
 
-console.log(JSON.stringify(convert(JSON.parse(Deno.args[0])), null, 2));
+console.log(JSON.stringify(convert(JSON.parse(args.jsonInput!)), null, 2));

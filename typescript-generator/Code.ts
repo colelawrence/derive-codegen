@@ -1,9 +1,14 @@
 import { gen } from "./gen.ts";
+import { LocationID } from "./types.gen.ts";
 
 export class Code {
   indentation = "  " + d`$$`;
   constructor(public readonly lines: (Code | string)[] = []) {}
-  static docString(docs: gen.Attrs, extraLine?: string): string[] {
+  static docString(
+    docs: gen.Attrs,
+    extraLine?: string,
+    includeLocationID?: [string, LocationID]
+  ): string[] {
     let found = "";
     if (docs.rust_docs) found += docs.rust_docs;
     if (docs.serde_attrs || docs.serde_flags) {
@@ -29,6 +34,17 @@ export class Code {
           )
           .join(", ") +
         ")]`";
+    }
+    if (includeLocationID) {
+      const [prefix, loc] = includeLocationID;
+      // Sample: `L(hn-design-tools/src/color.rs:16 #B6019-B6033)`
+      const link = loc
+        .replace(
+          /^L\(((?:[^\/]+\/)*)([^:]+)(\S*)\s*#B\d+-B\d+\)$/,
+          `[Source \`$1$2$3\`](__prefix__$1$2)`
+        )
+        .replace("__prefix__", prefix);
+      found += `\n\n${link}`;
     }
 
     if (extraLine) {
