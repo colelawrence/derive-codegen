@@ -550,6 +550,21 @@ impl Generation {
     }
 }
 
+#[derive(Debug)]
+pub struct GenerationSummary {
+    /// Relative to this folder
+    pub relative_to: PathBuf,
+    /// Paths and their sizes
+    pub output_files: Vec<(String, usize)>,
+}
+
+impl GenerationSummary {
+    pub fn print(self) -> Self {
+        println!("{self:?}");
+        self
+    }
+}
+
 impl<'a> GenerationCmd<'a> {
     /// Relative to current directory of teh command passed in
     pub fn with_output_path<P: Into<PathBuf>>(&mut self, path: P) -> &mut Self {
@@ -584,25 +599,34 @@ impl<'a> GenerationCmd<'a> {
     }
 
     #[track_caller]
-    pub fn write(&mut self) {
+    pub fn write(&mut self) -> GenerationSummary {
         let output = self.generate();
-        for err in output.warnings {
+        for err in output.warnings.iter() {
             eprintln!("Output warning:\n{err:?}")
         }
-        for err in output.errors {
+        for err in output.errors.iter() {
             eprintln!("Output error:\n{err:?}")
         }
 
         let relative_to = self.get_output_path();
-        for output_file in output.files {
-            let write_path = relative_to.join(output_file.path);
+        let mut summary = GenerationSummary {
+            relative_to: relative_to.clone(),
+            output_files: Vec::new(),
+        };
+        for output_file in output.files.iter() {
+            let write_path = relative_to.join(&output_file.path);
             if let Some(parent) = write_path.parent() {
                 std::fs::create_dir_all(parent).expect("creating missing directories");
             }
 
-            let mut file = std::fs::File::create(write_path).expect("created file");
-            write!(&mut file, "{}", output_file.source).expect("wrote file");
+            let mut file = std::fs::File::create(write_path).expect("creating file");
+            write!(&mut file, "{}", output_file.source).expect("writing generated file");
+            summary
+                .output_files
+                .push((output_file.path.to_string(), output_file.source.len()));
         }
+
+        summary
     }
 
     #[track_caller]
