@@ -168,6 +168,7 @@ function convert(input: gen.Input): gen.Output {
               $ns.lines.push(...variantDocs);
               $ns.add`export type ${variantIdent}${generics} = {`;
               $ns.scope(($$) => {
+                $$.lines.push(...variantDocs);
                 $$.add`${variantNameField}: {`;
                 typeFieldsFinish$($$, fields);
               });
