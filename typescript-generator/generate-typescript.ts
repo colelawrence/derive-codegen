@@ -4,19 +4,40 @@ import { gen } from "./gen.ts";
 
 const args = parseArgs({
   fileName: "What to call the file with all the declarations",
-  includeLocationsRelativeTo: "Include links to the original source with this prefix",
+  importScalarsFrom: "Relative file path to import all scalars from",
+  includeLocationsRelativeTo:
+    "Include links to the original source with this prefix",
 });
 
 function convert(input: gen.Input): gen.Output {
   const generated = new Code();
+  const scalarIdents: { import: string; as: string }[] = [];
+
   console.error("Number of declarations: ", input.declarations.length);
   for (const decl of input.declarations) {
-    const $decl = new Code();
     const docs = Code.docString(
       decl,
       undefined,
-      args.includeLocationsRelativeTo && [args.includeLocationsRelativeTo, decl.id_location]
+      args.includeLocationsRelativeTo
+        ? [args.includeLocationsRelativeTo, decl.id_location]
+        : undefined
     );
+
+    if (decl.codegen_flags?.scalar) {
+      const scalarIdent = ident(decl.id);
+      const importAsIdent = "_" + scalarIdent;
+      scalarIdents.push({ import: scalarIdent, as: importAsIdent });
+      generated.lines.push(...docs);
+      generated.add`export type ${scalarIdent} = ${importAsIdent};`;
+      generated.lines.push(...docs);
+      generated.add`export function ${scalarIdent}(value: ${scalarIdent}): ${scalarIdent} {`;
+      generated.ad1`return value;`;
+      generated.add`}`;
+      // skip adding scalars directly, since they are managed outside of our domain (much like GraphQL Scalars)
+      continue;
+    }
+
+    const $decl = new Code();
     // Part of generics decl
     const generics = decl.rust_generics?.length
       ? `<${decl.rust_generics.map((g) => g[0]).join(", ")}>`
@@ -245,6 +266,20 @@ function convert(input: gen.Input): gen.Output {
 
     generated.lines.push(...$decl.lines);
   }
+
+  if (args.importScalarsFrom) {
+    if (scalarIdents.length === 0) {
+      console.warn(
+        `importScalarsFrom is set to ${args.importScalarsFrom}, but no scalars are marked. Make sure to use \`#[codegen(scalar)]\` to mark a struct or enum as a scalar.`
+      );
+    }
+    generated.lines.unshift(
+      `import { ${scalarIdents
+        .map((a) => `${a.import} as ${a.as}`)
+        .join(", ")} } from "${args.importScalarsFrom}";`
+    );
+  }
+
   return {
     errors: [],
     files: [
