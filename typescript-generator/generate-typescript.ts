@@ -4,6 +4,7 @@ import { gen } from "./gen.ts";
 
 const args = parseArgs({
   fileName: "What to call the file with all the declarations",
+  prependText: "Prepend this to the top of the file",
   importScalarsFrom: "Relative file path to import all scalars from",
   includeLocationsRelativeTo:
     "Include links to the original source with this prefix",
@@ -272,12 +273,17 @@ function convert(input: gen.Input): gen.Output {
       console.warn(
         `importScalarsFrom is set to ${args.importScalarsFrom}, but no scalars are marked. Make sure to use \`#[codegen(scalar)]\` to mark a struct or enum as a scalar.`
       );
+    } else {
+      generated.lines.unshift(
+        `import { ${scalarIdents
+          .map((a) => `${a.import} as ${a.as}`)
+          .join(", ")} } from "${args.importScalarsFrom}";`
+      );
     }
-    generated.lines.unshift(
-      `import { ${scalarIdents
-        .map((a) => `${a.import} as ${a.as}`)
-        .join(", ")} } from "${args.importScalarsFrom}";`
-    );
+  }
+
+  if (args.prependText) {
+    generated.lines.unshift(args.prependText);
   }
 
   return {
