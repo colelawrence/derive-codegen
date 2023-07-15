@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 #[cfg(feature = "experimental")]
 use serde_reflection;
 
-pub mod utils;
 pub mod types;
+pub mod utils;
 
 pub struct Context {
     tags: BTreeSet<String>,
@@ -57,9 +57,8 @@ impl Context {
         file_name: &str,
         line: u32,
     ) -> types::TypeRoot {
-        let mut type_root =
-            serde_json::from_str::<types::TypeRoot>(names_json)
-                .expect("Incompatible versions of generate & code");
+        let mut type_root = serde_json::from_str::<types::TypeRoot>(names_json)
+            .expect("Incompatible versions of generate & code");
 
         type_root.file = file_name.to_string();
         type_root.line = line;
@@ -231,7 +230,7 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<types::TypeRoot> {
                     panic!("Mismatch between containers (do we need to handle flatten or similar correctly?) {named_type:#?} VERSUS {reflected_type:#?}")
                 }
             }
-    
+
             type_root
         }));
     }
@@ -241,8 +240,8 @@ pub fn get_types_by_tags(tags: &[String]) -> Vec<types::TypeRoot> {
 
 #[cfg(feature = "experimental")]
 fn format_to_format(input: &serde_reflection::Format) -> types::Format {
-    use types::Format as IFormat;
     use serde_reflection::Format as SFormat;
+    use types::Format as IFormat;
     match input {
         SFormat::Variable(_) => unreachable!(),
         SFormat::TypeName(name) => IFormat::TypeName(name.clone()),
