@@ -81,7 +81,10 @@ function convert(input: gen.Input): gen.Output {
             `return function _match(input): R {`,
             $nsMatchIfStrs,
             $nsMatchIfObjs,
-            new Code([`const _exhaust: never = input;`, `return _exhaust;`]),
+            new Code([
+              `const _exhaust: never = input;`,
+              `throw new TypeError("Unknown object when expected ${enumIdent}");`,
+            ]),
             `}`,
           ]),
           `}`,
