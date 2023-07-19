@@ -26,10 +26,12 @@ function convert(input: gen.Input): gen.Output {
 
     if (decl.codegen_flags?.scalar) {
       const scalarIdent = ident(decl.id);
-      const importAsIdent = "_" + scalarIdent;
-      scalarIdents.push({ import: scalarIdent, as: importAsIdent });
-      generated.lines.push(...docs);
-      generated.add`export type ${scalarIdent} = ${importAsIdent};`;
+      if (args.importScalarsFrom) {
+        const importAsIdent = "_" + scalarIdent;
+        scalarIdents.push({ import: scalarIdent, as: importAsIdent });
+        generated.lines.push(...docs);
+        generated.add`export type ${scalarIdent} = ${importAsIdent};`;
+      }
       generated.lines.push(...docs);
       generated.add`export function ${scalarIdent}(value: ${scalarIdent}): ${scalarIdent} {`;
       generated.ad1`return value;`;
@@ -53,13 +55,18 @@ function convert(input: gen.Input): gen.Output {
         const structIdent = ident(decl.id);
         // type
         $decl.lines.push(...docs);
-        $decl.add`export type ${structIdent}${generics} = {`;
-        typeFieldsFinish$($decl, fields);
-        // create
-        $decl.lines.push(...docs);
-        $decl.add`export function ${structIdent}${generics}(inner: ${structIdent}${generics}): ${structIdent}${generics} {`;
-        $decl.ad1`return inner;`;
-        $decl.add`}`;
+        if (decl.codegen_flags?.ts_interface_merge) {
+          $decl.add`export interface ${structIdent}${generics} {`;
+          typeFieldsFinish$($decl, fields, "}");
+        } else {
+          $decl.add`export type ${structIdent}${generics} = {`;
+          typeFieldsFinish$($decl, fields);
+          // create
+          $decl.lines.push(...docs);
+          $decl.add`export function ${structIdent}${generics}(inner: ${structIdent}${generics}): ${structIdent}${generics} {`;
+          $decl.ad1`return inner;`;
+          $decl.add`}`;
+        }
       },
       Enum({ repr, variants }) {
         const enumIdent = ident(decl.id);
@@ -197,7 +204,7 @@ function convert(input: gen.Input): gen.Output {
                 $$.add`${variantNameField}: {`;
                 typeFieldsFinish$($$, fields);
               });
-              $ns.add`}`;
+              $ns.add`};`;
               // create
               $ns.lines.push(...variantDocs);
               $ns.add`export function ${variantIdent}${generics}(value: ${innerTypeRef}): ${variantIdent} {`;
@@ -315,7 +322,11 @@ function splitByFlattened<T extends gen.Attrs>(items: T[]) {
 }
 
 /** Only for the types */
-function typeFieldsFinish$(root: Code, fields: gen.NamedField[]) {
+function typeFieldsFinish$(
+  root: Code,
+  fields: gen.NamedField[],
+  finish: "}" | "};" = "};"
+) {
   const $ = root.indented();
   const split = splitByFlattened(fields);
   for (const field of split.fields) {
@@ -324,13 +335,19 @@ function typeFieldsFinish$(root: Code, fields: gen.NamedField[]) {
       optional ||
       (field.serde_flags?.default && field.serde_attrs?.skip_serializing_if);
     $.addDocString(field);
-    $.add`${namedField(field)}${isOptional && "?"}: ${src}${
-      isOptional && " | null | undefined"
-    };`;
+    if (field.codegen_attrs?.ts_as) {
+      $.add`${namedField(field)}${isOptional && "?"}: ${
+        field.codegen_attrs.ts_as[0]
+      };`;
+    } else {
+      $.add`${namedField(field)}${isOptional && "?"}: ${src}${
+        isOptional && " | null | undefined"
+      };`;
+    }
   }
 
   if (split.flattened.length === 0) {
-    root.add`};`;
+    root.lines.push(finish);
     return;
   }
   root.add`} // flattened fields:`;
