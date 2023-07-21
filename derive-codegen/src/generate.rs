@@ -560,7 +560,7 @@ pub struct GenerationSummary {
 
 impl GenerationSummary {
     pub fn print(self) -> Self {
-        println!("{self:?}");
+        eprintln!("{self:?}");
         self
     }
 }
