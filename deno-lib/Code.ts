@@ -1,13 +1,18 @@
 import { gen } from "./gen.ts";
-import { LocationID } from "./types.gen.ts";
-
 export class Code {
   indentation = "  " + d`$$`;
-  constructor(public readonly lines: (Code | string)[] = []) {}
+  constructor(
+    public readonly lines: (Code | string)[] = [],
+    public readonly isGroup = false
+  ) {}
+  static docStringSettings = {
+    multi_line: { prefix: "/**", empty_line_pre: "\n *", line_pre: "\n * ", suffix: " */" },
+    single_line: { prefix: "/** ", suffix: " */" },
+  };
   static docString(
     docs: gen.Attrs,
     extraLine?: string,
-    includeLocationID?: [string, LocationID]
+    includeLocationID?: [string, gen.LocationID]
   ): string[] {
     let found = "";
     if (docs.rust_docs) found += docs.rust_docs;
@@ -58,13 +63,15 @@ export class Code {
     if (found) {
       return [
         found.includes("\n")
-          ? "/**\n * " +
+          ? Code.docStringSettings.multi_line.prefix +
             found
               .trim()
-              .replace(/\n([^\n])/g, "\n $1")
-              .replace(/\n/g, "\n *") +
-            "\n */"
-          : "/** " + found.trim() + " */",
+              .replace(/\n([^\n])/g, (_, capture) => {
+                if (capture.length) return Code.docStringSettings.multi_line.line_pre + capture;
+                return Code.docStringSettings.multi_line.empty_line_pre + capture;
+              })+
+              Code.docStringSettings.multi_line.suffix
+          : Code.docStringSettings.single_line.prefix + found.trim() + Code.docStringSettings.single_line.suffix,
       ];
     } else {
       return [];
@@ -94,10 +101,23 @@ export class Code {
       this.lines.push(new Code([raw(arr, ...args)]));
     }
   }
-  indented(): Code {
+  grouped(lines?: (Code | string)[]): Code {
+    // const last = this.lines.findLast(() => true);
+    // if (last instanceof Code && last.group) {
+    //   if (lines) last.lines.push(...lines);
+    //   return last;
+    // }
+    const c = new Code(lines, true);
+    this.lines.push(c);
+    return c;
+  }
+  indented(lines?: (Code | string)[]): Code {
     const last = this.lines.findLast(() => true);
-    if (last instanceof Code) return last;
-    const c = new Code();
+    if (last instanceof Code && !last.isGroup) {
+      if (lines) last.lines.push(...lines);
+      return last;
+    }
+    const c = new Code(lines);
     this.lines.push(c);
     return c;
   }
@@ -115,10 +135,18 @@ export class Code {
         if (str.length) str += delimiter + d`4`;
         str += line.replace(/\n([^\n])/g, delimiter + "$1");
       } else {
-        const toAdd = line.toStringIndented(indentation, level + 1);
-        if (toAdd.length) {
-          if (str.length) str += delimiter + indentation + d`5`;
-          str += toAdd;
+        if (line.isGroup) {
+          const toAdd = line.toStringIndented(indentation, level);
+          if (toAdd.length) {
+            if (str.length) str += delimiter + d`3`;
+            str += toAdd;
+          }
+        } else {
+          const toAdd = line.toStringIndented(indentation, level + 1);
+          if (toAdd.length) {
+            if (str.length) str += delimiter + indentation + d`5`;
+            str += toAdd;
+          }
         }
       }
     }

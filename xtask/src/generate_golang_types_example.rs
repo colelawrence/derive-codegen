@@ -48,6 +48,6 @@ pub(crate) fn run(options: SubOptions) {
                 .arg("run")
                 .arg("./golang-generator/generate-go.ts"),
         )
-        .with_output_path("./golang-generator/codegen-types")
+        .with_output_path("./golang-generator/example-gen")
         .write();
 }

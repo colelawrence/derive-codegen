@@ -1,6 +1,9 @@
-import { Code } from "./Code.ts";
-import { gen } from "./gen.ts";
+import { Code, gen } from "../deno-lib/mod.ts";
 
+Code.docStringSettings = {
+  multi_line: { empty_line_pre: "//", line_pre: "// ", prefix: "", suffix: "" },
+  single_line: { prefix: "// ", suffix: "" },
+}
 type GeneratedDecl = {
   code: Code;
   fileName: string;
@@ -423,7 +426,7 @@ const createFormatter =
   (context: Context): ((forIdent: string) => Formatter) =>
   (forIdent) => {
     const createFormat: Formatter = gen.Format.apply({
-      TypeName: (value) => ({ src: ident(value) }),
+      TypeName: (value) => ({ src: ident(value.ident) }),
       I8: always("int8"),
       I16: always("int16"),
       I32: always("int32"),

@@ -1,14 +1,10 @@
-/**
- * `#[serde(transparent)]`
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+/**`#[serde(transparent)]`
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 export type LocationID = string
-/**
- * `#[serde(transparent)]`
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+/**`#[serde(transparent)]`
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 export function LocationID(inner: string): LocationID {
   return inner;
 }
@@ -26,11 +22,9 @@ export type InputDeclaration = {
   id_location: LocationID;
   container_kind: ContainerFormat;
 } // flattened fields:
-/**
- * `#[serde(flatten)]`
- *
- * Flattened from `.attrs`.
- */
+/**`#[serde(flatten)]`
+
+ * Flattened from `.attrs`. */
 & Attrs;
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export function InputDeclaration(inner: InputDeclaration): InputDeclaration {
@@ -67,13 +61,11 @@ export type OutputMessage = {
 export function OutputMessage(inner: OutputMessage): OutputMessage {
   return inner;
 }
-/**
- * Serde-based serialization format for anonymous "value" types.
+/**Serde-based serialization format for anonymous "value" types.
  * This is just the path respecting serde names into the container
  * It gets replaced by the knowledge
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 // deno-lint-ignore no-namespace
 export namespace Format {
   export type ApplyFns<R> = {
@@ -110,10 +102,8 @@ export namespace Format {
     Map(inner: Map["Map"]): R,
     /** A tuple, e.g. the format of `(Foo, Bar)`. */
     Tuple(inner: Tuple["Tuple"]): R;
-    /**
-     * Alias for `(Foo, ... Foo)`.
-     * E.g. the format of `[Foo; N]`.
-     */
+    /**Alias for `(Foo, ... Foo)`.
+     * E.g. the format of `[Foo; N]`. */
     TupleArray(inner: TupleArray["TupleArray"]): R,
   }
   /** Match helper for {@link Format} */
@@ -152,7 +142,7 @@ export namespace Format {
       if ("Tuple" in input) return to.Tuple(input["Tuple"]);
       if ("TupleArray" in input) return to.TupleArray(input["TupleArray"]);
       const _exhaust: never = input;
-      return _exhaust;
+      throw new TypeError("Unknown object when expected Format");
     }
   }
   /** Match helper for {@link Format} */
@@ -166,17 +156,18 @@ export namespace Format {
     Incomplete: {
       debug: string;
     };
-  }
+  };
   export function Incomplete(value: Incomplete["Incomplete"]): Incomplete {
     return { Incomplete: value }
   }
   /** The name of a container. */
   export type TypeName = {
+    /** The name of a container. */
     TypeName: {
       ident: string;
       generics: Array<Format>;
     };
-  }
+  };
   /** The name of a container. */
   export function TypeName(value: TypeName["TypeName"]): TypeName {
     return { TypeName: value }
@@ -283,11 +274,12 @@ export namespace Format {
   }
   /** A map, e.g. the format of `BTreeMap<K, V>`. */
   export type Map = {
+    /** A map, e.g. the format of `BTreeMap<K, V>`. */
     Map: {
       key: Format;
       value: Format;
     };
-  }
+  };
   /** A map, e.g. the format of `BTreeMap<K, V>`. */
   export function Map(value: Map["Map"]): Map {
     return { Map: value }
@@ -301,31 +293,27 @@ export namespace Format {
   export function Tuple(value: Array<Format>): Tuple {
     return { Tuple: value };
   }
-  /**
-   * Alias for `(Foo, ... Foo)`.
-   * E.g. the format of `[Foo; N]`.
-   */
+  /**Alias for `(Foo, ... Foo)`.
+   * E.g. the format of `[Foo; N]`. */
   export type TupleArray = {
+    /**Alias for `(Foo, ... Foo)`.
+     * E.g. the format of `[Foo; N]`. */
     TupleArray: {
       content: Format;
       size: number;
     };
-  }
-  /**
-   * Alias for `(Foo, ... Foo)`.
-   * E.g. the format of `[Foo; N]`.
-   */
+  };
+  /**Alias for `(Foo, ... Foo)`.
+   * E.g. the format of `[Foo; N]`. */
   export function TupleArray(value: TupleArray["TupleArray"]): TupleArray {
     return { TupleArray: value }
   }
 }
-/**
- * Serde-based serialization format for anonymous "value" types.
+/**Serde-based serialization format for anonymous "value" types.
  * This is just the path respecting serde names into the container
  * It gets replaced by the knowledge
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 export type Format =
   | Format.Incomplete
   | Format.TypeName
@@ -354,12 +342,10 @@ export type Format =
   | Format.Map
   | Format.Tuple
   | Format.TupleArray
-/**
- * Serde-based serialization format for named "container" types.
+/**Serde-based serialization format for named "container" types.
  * In Rust, those are enums and structs.
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 // deno-lint-ignore no-namespace
 export namespace ContainerFormat {
   export type ApplyFns<R> = {
@@ -372,10 +358,8 @@ export namespace ContainerFormat {
     TupleStruct(inner: TupleStruct["TupleStruct"]): R;
     /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
     Struct(inner: Struct["Struct"]): R,
-    /**
-     * An enum, that is, an enumeration of variants.
-     * Each variant has a unique name and index within the enum.
-     */
+    /**An enum, that is, an enumeration of variants.
+     * Each variant has a unique name and index within the enum. */
     Enum(inner: Enum["Enum"]): R,
   }
   /** Match helper for {@link ContainerFormat} */
@@ -392,7 +376,7 @@ export namespace ContainerFormat {
       if ("Struct" in input) return to.Struct(input["Struct"]);
       if ("Enum" in input) return to.Enum(input["Enum"]);
       const _exhaust: never = input;
-      return _exhaust;
+      throw new TypeError("Unknown object when expected ContainerFormat");
     }
   }
   /** Match helper for {@link ContainerFormat} */
@@ -428,38 +412,35 @@ export namespace ContainerFormat {
   }
   /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
   export type Struct = {
+    /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
     Struct: {
       fields: Array<NamedField>;
     };
-  }
+  };
   /** A struct with named parameters, e.g. `struct A { a: Foo }`. */
   export function Struct(value: Struct["Struct"]): Struct {
     return { Struct: value }
   }
-  /**
-   * An enum, that is, an enumeration of variants.
-   * Each variant has a unique name and index within the enum.
-   */
+  /**An enum, that is, an enumeration of variants.
+   * Each variant has a unique name and index within the enum. */
   export type Enum = {
+    /**An enum, that is, an enumeration of variants.
+     * Each variant has a unique name and index within the enum. */
     Enum: {
       repr: EnumRepresentation;
       variants: Array<NamedVariant>;
     };
-  }
-  /**
-   * An enum, that is, an enumeration of variants.
-   * Each variant has a unique name and index within the enum.
-   */
+  };
+  /**An enum, that is, an enumeration of variants.
+   * Each variant has a unique name and index within the enum. */
   export function Enum(value: Enum["Enum"]): Enum {
     return { Enum: value }
   }
 }
-/**
- * Serde-based serialization format for named "container" types.
+/**Serde-based serialization format for named "container" types.
  * In Rust, those are enums and structs.
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 export type ContainerFormat =
   | ContainerFormat.UnitStruct
   | ContainerFormat.NewTypeStruct
@@ -472,11 +453,9 @@ export type NamedVariant = {
   id_location: LocationID;
   variant_format: VariantFormat;
 } // flattened fields:
-/**
- * `#[serde(flatten)]`
- *
- * Flattened from `.attrs`.
- */
+/**`#[serde(flatten)]`
+
+ * Flattened from `.attrs`. */
 & Attrs;
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export function NamedVariant(inner: NamedVariant): NamedVariant {
@@ -488,21 +467,17 @@ export type NamedField = {
   id_location: LocationID;
   format: Format;
 } // flattened fields:
-/**
- * `#[serde(flatten)]`
- *
- * Flattened from `.attrs`.
- */
+/**`#[serde(flatten)]`
+
+ * Flattened from `.attrs`. */
 & Attrs;
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export function NamedField(inner: NamedField): NamedField {
   return inner;
 }
-/**
- * Description of a variant in an enum.
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+/**Description of a variant in an enum.
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 // deno-lint-ignore no-namespace
 export namespace VariantFormat {
   export type ApplyFns<R> = {
@@ -529,7 +504,7 @@ export namespace VariantFormat {
       if ("Tuple" in input) return to.Tuple(input["Tuple"]);
       if ("Struct" in input) return to.Struct(input["Struct"]);
       const _exhaust: never = input;
-      return _exhaust;
+      throw new TypeError("Unknown object when expected VariantFormat");
     }
   }
   /** Match helper for {@link VariantFormat} */
@@ -565,20 +540,19 @@ export namespace VariantFormat {
   }
   /** A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }` */
   export type Struct = {
+    /** A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }` */
     Struct: {
       fields: Array<NamedField>;
     };
-  }
+  };
   /** A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }` */
   export function Struct(value: Struct["Struct"]): Struct {
     return { Struct: value }
   }
 }
-/**
- * Description of a variant in an enum.
- *
- * `#[codegen(tags = "derive-codegen-internal")]`
- */
+/**Description of a variant in an enum.
+
+ * `#[codegen(tags = "derive-codegen-internal")]` */
 export type VariantFormat =
   | VariantFormat.Unit
   | VariantFormat.NewType
@@ -586,41 +560,29 @@ export type VariantFormat =
   | VariantFormat.Struct
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export type Attrs = {
-  /**
-   * Documentation comments like this one.
-   * Future idea: Pass in tokens with links to other types.
-   */
+  /**Documentation comments like this one.
+   * Future idea: Pass in tokens with links to other types. */
   rust_docs?: string | undefined | null | null | undefined;
-  /**
-   * Only specified for enums and structs
+  /**Only specified for enums and structs
    * Future: Consider whether we should monomorphize on the codegen side...
-   *
-   * `#[serde(default, skip_serializing_if = "Vec::is_empty")]`
-   */
+
+   * `#[serde(default, skip_serializing_if = "Vec::is_empty")]` */
   rust_generics?: Array<[string, LocationID]> | null | undefined;
-  /**
-   * e.g. `#[serde(rename = "newName")]`, your generator will need to describe what it supports
-   *
-   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
-   */
+  /**e.g. `#[serde(rename = "newName")]`, your generator will need to describe what it supports
+
+   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]` */
   serde_attrs?: Record<string, [string, LocationID]> | null | undefined;
-  /**
-   * e.g. `#[serde(transparent)]`, your generator will need to describe what it supports
-   *
-   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
-   */
+  /**e.g. `#[serde(transparent)]`, your generator will need to describe what it supports
+
+   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]` */
   serde_flags?: Record<string, LocationID> | null | undefined;
-  /**
-   * e.g. `#[codegen(ts_as = "Date")]` - these are customizable for your generator's use cases.
-   *
-   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
-   */
+  /**e.g. `#[codegen(ts_as = "Date")]` - these are customizable for your generator's use cases.
+
+   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]` */
   codegen_attrs?: Record<string, [string, LocationID]> | null | undefined;
-  /**
-   * e.g. `#[codegen(hidden)]` - these are customizable for your generator's use cases.
-   *
-   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
-   */
+  /**e.g. `#[codegen(hidden)]` - these are customizable for your generator's use cases.
+
+   * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]` */
   codegen_flags?: Record<string, LocationID> | null | undefined;
 };
 /** `#[codegen(tags = "derive-codegen-internal")]` */
@@ -632,17 +594,13 @@ export function Attrs(inner: Attrs): Attrs {
 export namespace EnumRepresentation {
   export type ApplyFns<R> = {
     // callbacks
-    /**
-     * The default
-     * e.g `{ User: { id: 1200, name: "Smithy" } }`
-     */
+    /**The default
+     * e.g `{ User: { id: 1200, name: "Smithy" } }` */
     External(): R,
     /** e.g `{ id: 1200, name: "Smithy" }` */
     Untagged(): R,
-    /**
-     * e.g `{ type: "User", id: 1200, name: "Smithy" }`
-     * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }`
-     */
+    /**e.g `{ type: "User", id: 1200, name: "Smithy" }`
+     * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }` */
     Tagged(inner: Tagged["Tagged"]): R,
   }
   /** Match helper for {@link EnumRepresentation} */
@@ -657,7 +615,7 @@ export namespace EnumRepresentation {
       if (typeof input !== "object" || input == null) throw new TypeError("Unexpected non-object for input");
       if ("Tagged" in input) return to.Tagged(input["Tagged"]);
       const _exhaust: never = input;
-      return _exhaust;
+      throw new TypeError("Unknown object when expected EnumRepresentation");
     }
   }
   /** Match helper for {@link EnumRepresentation} */
@@ -667,15 +625,11 @@ export namespace EnumRepresentation {
   ): R {
     return apply(to)(input)
   }
-  /**
-   * The default
-   * e.g `{ User: { id: 1200, name: "Smithy" } }`
-   */
+  /**The default
+   * e.g `{ User: { id: 1200, name: "Smithy" } }` */
   export type External = "External"
-  /**
-   * The default
-   * e.g `{ User: { id: 1200, name: "Smithy" } }`
-   */
+  /**The default
+   * e.g `{ User: { id: 1200, name: "Smithy" } }` */
   export function External(): External {
     return "External";
   }
@@ -685,22 +639,20 @@ export namespace EnumRepresentation {
   export function Untagged(): Untagged {
     return "Untagged";
   }
-  /**
-   * e.g `{ type: "User", id: 1200, name: "Smithy" }`
-   * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }`
-   */
+  /**e.g `{ type: "User", id: 1200, name: "Smithy" }`
+   * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }` */
   export type Tagged = {
+    /**e.g `{ type: "User", id: 1200, name: "Smithy" }`
+     * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }` */
     Tagged: {
       tag: string;
       tag_location: LocationID;
       content?: string | undefined | null | null | undefined;
       content_location?: LocationID | undefined | null | null | undefined;
     };
-  }
-  /**
-   * e.g `{ type: "User", id: 1200, name: "Smithy" }`
-   * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }`
-   */
+  };
+  /**e.g `{ type: "User", id: 1200, name: "Smithy" }`
+   * e.g `{ type: "User", content: { id: 1200, name: "Smithy" } }` */
   export function Tagged(value: Tagged["Tagged"]): Tagged {
     return { Tagged: value }
   }
