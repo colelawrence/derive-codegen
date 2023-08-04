@@ -75,6 +75,7 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
     };
 
     Ok(quote! {
+        #[doc(hidden)]
         #[allow(non_upper_case_globals)]
         #[allow(non_snake_case)]
         #[::#i_codegen_code_crate_q::linkme::distributed_slice(::#i_codegen_code_crate_q::CODEGEN_ITEMS)]
