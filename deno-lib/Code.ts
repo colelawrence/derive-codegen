@@ -3,28 +3,20 @@ export class Code {
   indentation = "  " + d`$$`;
   constructor(
     public readonly lines: (Code | string)[] = [],
-    public readonly isGroup = false
+    public readonly isGroup = false,
   ) {}
   static docStringSettings = {
-    multi_line: { prefix: "/**", empty_line_pre: "\n *", line_pre: "\n * ", suffix: " */" },
+    multi_line: { prefix: "/**", empty_line_pre: "\n *", line_pre: "\n * ", suffix: "\n */" },
     single_line: { prefix: "/** ", suffix: " */" },
   };
-  static docString(
-    docs: gen.Attrs,
-    extraLine?: string,
-    includeLocationID?: [string, gen.LocationID]
-  ): string[] {
+  static docString(docs: gen.Attrs, extraLine?: string, includeLocationID?: [string, gen.LocationID]): string[] {
     let found = "";
     if (docs.rust_docs) found += docs.rust_docs;
     if (docs.serde_attrs || docs.serde_flags) {
       found +=
         "\n\n`#[serde(" +
         Object.keys(docs.serde_flags ?? {})
-          .concat(
-            Object.entries(docs.serde_attrs ?? {}).map(
-              (a) => `${a[0]} = ${JSON.stringify(a[1][0])}`
-            )
-          )
+          .concat(Object.entries(docs.serde_attrs ?? {}).map((a) => `${a[0]} = ${JSON.stringify(a[1][0])}`))
           .join(", ") +
         ")]`";
     }
@@ -32,11 +24,7 @@ export class Code {
       found +=
         "\n\n`#[codegen(" +
         Object.keys(docs.codegen_flags ?? {})
-          .concat(
-            Object.entries(docs.codegen_attrs ?? {}).map(
-              (a) => `${a[0]} = ${JSON.stringify(a[1][0])}`
-            )
-          )
+          .concat(Object.entries(docs.codegen_attrs ?? {}).map((a) => `${a[0]} = ${JSON.stringify(a[1][0])}`))
           .join(", ") +
         ")]`";
     }
@@ -46,10 +34,7 @@ export class Code {
       const [prefix, loc] = includeLocationID;
       // Sample: `L(hn-design-tools/src/color.rs:16 #B6019-B6033)`
       const link = loc
-        .replace(
-          /^L\(((?:[^\/]+\/)*)([^:]+)(\S*)\s*#B\d+-B\d+\)$/,
-          `[Source \`$1$2$3\`](__prefix__$1$2)`
-        )
+        .replace(/^L\(((?:[^\/]+\/)*)([^:]+)(\S*)\s*#B\d+-B\d+\)$/, `[Source \`$1$2$3\`](__prefix__$1$2)`)
         .replace("__prefix__", prefix);
       found += `\n\n${link}`;
     }
@@ -64,13 +49,12 @@ export class Code {
       return [
         found.includes("\n")
           ? Code.docStringSettings.multi_line.prefix +
-            found
-              .trim()
-              .replace(/\n([^\n])/g, (_, capture) => {
-                if (capture.length) return Code.docStringSettings.multi_line.line_pre + capture;
-                return Code.docStringSettings.multi_line.empty_line_pre + capture;
-              })+
-              Code.docStringSettings.multi_line.suffix
+            Code.docStringSettings.multi_line.line_pre +
+            found.trim().replace(/\n([^\n]*)/g, (_, capture) => {
+              if (capture.length) return Code.docStringSettings.multi_line.line_pre + capture;
+              return Code.docStringSettings.multi_line.empty_line_pre + capture;
+            }) +
+            Code.docStringSettings.multi_line.suffix
           : Code.docStringSettings.single_line.prefix + found.trim() + Code.docStringSettings.single_line.suffix,
       ];
     } else {
@@ -79,8 +63,7 @@ export class Code {
   }
   get lastLine(): string {
     const last = this.lines[this.lines.length - 1];
-    if (typeof last !== "string")
-      throw new Error("Expected last line to be a string");
+    if (typeof last !== "string") throw new Error("Expected last line to be a string");
     return last;
   }
   set lastLine(value: string) {
@@ -166,7 +149,7 @@ function raw(template: TemplateStringsArray, ...args: Args) {
     ...args.map((a) => {
       if (a == null || a === false) return "";
       return typeof a === "object" && "src" in a ? a.src : a;
-    })
+    }),
   );
 }
 const DEBUG = false;
