@@ -215,16 +215,36 @@ enum EnumRepresentation {
 }
 
 #[derive(Clone)]
-struct TypeRootConverter {
-    file_name: String,
-    line_number_override: Option<u32>,
+struct SourceLineNumberIndex {
     newlines: Vec<usize>,
     // TODO: is this crlf useful for something?
     #[allow(unused)]
     is_crlf: bool,
 }
 
-impl TypeRootConverter {
+impl SourceLineNumberIndex {
+    fn new(file: impl std::io::Read) -> Self {
+        use std::io::Read;
+        let mut newlines = Vec::new();
+        let mut is_crlf = false;
+
+        let mut current_byte = 0;
+        for byte_result in BufReader::new(file).bytes() {
+            match byte_result.expect("read next byte") {
+                b'\n' => {
+                    newlines.push(current_byte + 1);
+                }
+                b'\r' => {
+                    is_crlf = true;
+                }
+                _ => {}
+            }
+            current_byte += 1;
+        }
+
+        Self { is_crlf, newlines }
+    }
+
     fn get_ln_col(&self, byte: usize) -> (usize, usize) {
         let index = match self.newlines.binary_search(&byte) {
             Ok(exact_at) => exact_at,
@@ -233,13 +253,27 @@ impl TypeRootConverter {
         if index >= self.newlines.len() || index == 0 {
             (index, 0)
         } else {
-            let newline_byte_offset = *self.newlines.get(index - 1).expect("in bounds");
+            let newline_byte_offset = *self.newlines.get(index).expect("in bounds");
             if byte < newline_byte_offset {
                 panic!("expected newline returned to be before byte (byte: {byte} < newline_at: {newline_byte_offset}) found at index: {index}, all new lines: {:?}", self.newlines)
             }
             (index + 1, byte - newline_byte_offset)
         }
     }
+}
+
+#[derive(Clone)]
+struct TypeRootConverter {
+    file_name: String,
+    line_number_override: Option<u32>,
+    lines: SourceLineNumberIndex,
+}
+
+impl TypeRootConverter {
+    fn get_ln_col(&self, byte: usize) -> (usize, usize) {
+        self.lines.get_ln_col(byte)
+    }
+
     fn location_id<T>(
         &self,
         st::Spanned {
@@ -694,11 +728,6 @@ fn create_input_from_selection(selection: &Generation) -> Input {
         .collect::<HashSet<_>>()
         .into_par_iter()
         .map(|file_name| {
-            use std::io::Read;
-            let mut is_crlf = false;
-            let mut newlines = vec![0usize];
-            let mut current_byte = 0usize;
-
             let file = {
                 match std::fs::File::open(&file_name) {
                     Ok(found) => found,
@@ -714,9 +743,11 @@ fn create_input_from_selection(selection: &Generation) -> Input {
                                     file_name.clone(),
                                     TypeRootConverter {
                                         file_name,
-                                        newlines,
                                         line_number_override: None,
-                                        is_crlf,
+                                        lines: SourceLineNumberIndex {
+                                            newlines: vec![0usize],
+                                            is_crlf: false,
+                                        },
                                     },
                                 );
                             }
@@ -725,25 +756,12 @@ fn create_input_from_selection(selection: &Generation) -> Input {
                 }
             };
 
-            for byte_result in BufReader::new(file).bytes() {
-                match byte_result.expect("read next byte") {
-                    b'\n' => {
-                        newlines.push(current_byte + 1);
-                    }
-                    b'\r' => {
-                        is_crlf = true;
-                    }
-                    _ => {}
-                }
-                current_byte += 1;
-            }
             (
                 file_name.clone(),
                 TypeRootConverter {
                     file_name,
-                    newlines,
                     line_number_override: None,
-                    is_crlf,
+                    lines: SourceLineNumberIndex::new(file),
                 },
             )
         })
