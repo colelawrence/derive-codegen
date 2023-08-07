@@ -22,7 +22,7 @@ export function generateTypeScript(
     const docs = Code.docString(
       decl,
       undefined,
-      args.includeLocationsRelativeTo ? [args.includeLocationsRelativeTo, decl.id_location] : undefined,
+      args.includeLocationsRelativeTo != null ? [args.includeLocationsRelativeTo, decl.id_location] : undefined,
     );
 
     const $decl = new Code();
@@ -60,7 +60,7 @@ export function generateTypeScript(
           `if (typeof input !== "object" || input == null) throw new TypeError("Unexpected non-object for input");`,
         ]);
         const $ns = new Code([
-          `export type ApplyFns<R${genericsCont}> = {`,
+          `export type ApplyFns<R = void${genericsCont}> = {`,
           $nsMatchToObj,
           `}`,
           `/** Match helper for {@link ${enumIdent}} */`,
@@ -79,7 +79,7 @@ export function generateTypeScript(
           ]),
           `}`,
           `/** Match helper for {@link ${enumIdent}} */`,
-          `export function match<R>(`,
+          `export function match<R${genericsCont}>(`,
           new Code([`input: ${enumIdent}${generics},`, `to: ApplyFns<R${genericsCont}>,`]),
           `): R {`,
           new Code([`return apply(to)(input)`]),
