@@ -8,25 +8,28 @@ export class Code {
   static docStringSettings = {
     multi_line: { prefix: "/**", empty_line_pre: "\n *", line_pre: "\n * ", suffix: "\n */" },
     single_line: { prefix: "/** ", suffix: " */" },
+    skip_rust_attrs: false,
   };
   static docString(docs: gen.Attrs, extraLine?: string, includeLocationID?: [string, gen.LocationID]): string[] {
     let found = "";
     if (docs.rust_docs) found += docs.rust_docs;
-    if (docs.serde_attrs || docs.serde_flags) {
-      found +=
-        "\n\n`#[serde(" +
-        Object.keys(docs.serde_flags ?? {})
-          .concat(Object.entries(docs.serde_attrs ?? {}).map((a) => `${a[0]} = ${JSON.stringify(a[1][0])}`))
-          .join(", ") +
-        ")]`";
-    }
-    if (docs.codegen_attrs || docs.codegen_flags) {
-      found +=
-        "\n\n`#[codegen(" +
-        Object.keys(docs.codegen_flags ?? {})
-          .concat(Object.entries(docs.codegen_attrs ?? {}).map((a) => `${a[0]} = ${JSON.stringify(a[1][0])}`))
-          .join(", ") +
-        ")]`";
+    if (!Code.docStringSettings.skip_rust_attrs) {
+      if (docs.serde_attrs || docs.serde_flags) {
+        found +=
+          "\n\n`#[serde(" +
+          Object.keys(docs.serde_flags ?? {})
+            .concat(Object.entries(docs.serde_attrs ?? {}).map((a) => `${a[0]} = ${JSON.stringify(a[1][0])}`))
+            .join(", ") +
+          ")]`";
+      }
+      if (docs.codegen_attrs || docs.codegen_flags) {
+        found +=
+          "\n\n`#[codegen(" +
+          Object.keys(docs.codegen_flags ?? {})
+            .concat(Object.entries(docs.codegen_attrs ?? {}).map((a) => `${a[0]} = ${JSON.stringify(a[1][0])}`))
+            .join(", ") +
+          ")]`";
+      }
     }
     if (includeLocationID) {
       // Future: You could also maybe create a configurable declaration map so jumping to definition
