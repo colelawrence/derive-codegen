@@ -15,6 +15,7 @@ export function LocationID(inner: string): LocationID {
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export type Input = {
   declarations: Array<InputDeclaration>;
+  functions: Array<FunctionDeclaration>;
 };
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export function Input(inner: Input): Input {
@@ -27,6 +28,8 @@ export type InputDeclaration = {
   container_kind: ContainerFormat;
 } // flattened fields:
 /**
+ * Contains generics, docs, and `[codegen]` attr information.
+ *
  * `#[serde(flatten)]`
  *
  * Flattened from `.attrs`.
@@ -34,6 +37,36 @@ export type InputDeclaration = {
 & Attrs;
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 export function InputDeclaration(inner: InputDeclaration): InputDeclaration {
+  return inner;
+}
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type FunctionDeclaration = {
+  id: string;
+  id_location: LocationID;
+  function: FunctionFormat;
+} // flattened fields:
+/**
+ * Contains generics, docs, and `[codegen]` attr information.
+ *
+ * `#[serde(flatten)]`
+ *
+ * Flattened from `.attrs`.
+ */
+& Attrs;
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export function FunctionDeclaration(inner: FunctionDeclaration): FunctionDeclaration {
+  return inner;
+}
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type FunctionFormat = {
+  /** Whether this function was declared with async */
+  is_async: boolean;
+  self_opt?: FunctionParameter | undefined | null | null | undefined;
+  params: Array<FunctionParameter>;
+  return_type: Format;
+};
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export function FunctionFormat(inner: FunctionFormat): FunctionFormat {
   return inner;
 }
 /** `#[codegen(tags = "derive-codegen-internal")]` */
@@ -76,7 +109,7 @@ export function OutputMessage(inner: OutputMessage): OutputMessage {
  */
 // deno-lint-ignore no-namespace
 export namespace Format {
-  export type ApplyFns<R> = {
+  export type ApplyFns<R = void> = {
     // callbacks
     Incomplete(inner: Incomplete["Incomplete"]): R,
     /** The name of a container. */
@@ -368,7 +401,7 @@ export type Format =
  */
 // deno-lint-ignore no-namespace
 export namespace ContainerFormat {
-  export type ApplyFns<R> = {
+  export type ApplyFns<R = void> = {
     // callbacks
     /** An empty struct, e.g. `struct A`. */
     UnitStruct(): R,
@@ -509,6 +542,22 @@ export type NamedField = {
 export function NamedField(inner: NamedField): NamedField {
   return inner;
 }
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export type FunctionParameter = {
+  id: string;
+  id_location: LocationID;
+  format: Format;
+} // flattened fields:
+/**
+ * `#[serde(flatten)]`
+ *
+ * Flattened from `.attrs`.
+ */
+& Attrs;
+/** `#[codegen(tags = "derive-codegen-internal")]` */
+export function FunctionParameter(inner: FunctionParameter): FunctionParameter {
+  return inner;
+}
 /**
  * Description of a variant in an enum.
  *
@@ -516,7 +565,7 @@ export function NamedField(inner: NamedField): NamedField {
  */
 // deno-lint-ignore no-namespace
 export namespace VariantFormat {
-  export type ApplyFns<R> = {
+  export type ApplyFns<R = void> = {
     // callbacks
     /** A variant without parameters, e.g. `A` in `enum X { A }` */
     Unit(): R,
@@ -612,12 +661,14 @@ export type Attrs = {
   rust_generics?: Array<[string, LocationID]> | null | undefined;
   /**
    * e.g. `#[serde(rename = "newName")]`, your generator will need to describe what it supports
+   * Not applicable to derived functions.
    *
    * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
    */
   serde_attrs?: Record<string, [string, LocationID]> | null | undefined;
   /**
    * e.g. `#[serde(transparent)]`, your generator will need to describe what it supports
+   * Not applicable to derived functions.
    *
    * `#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`
    */
@@ -642,7 +693,7 @@ export function Attrs(inner: Attrs): Attrs {
 /** `#[codegen(tags = "derive-codegen-internal")]` */
 // deno-lint-ignore no-namespace
 export namespace EnumRepresentation {
-  export type ApplyFns<R> = {
+  export type ApplyFns<R = void> = {
     // callbacks
     /**
      * The default

@@ -1,20 +1,11 @@
 use derive_codegen::Generation;
-use gumdrop::Options;
 use std::path::PathBuf;
 use std::process::Command;
 
-#[derive(Options)]
-pub(crate) struct SubOptions {
-    #[options(help = "show help")]
-    help: bool,
-}
+#[derive(Debug, clap::Parser)]
+pub(crate) struct SubOptions {}
 
-pub(crate) fn run(options: SubOptions) {
-    if options.help {
-        println!("{}", SubOptions::usage());
-        return;
-    }
-
+pub(crate) fn run(_: SubOptions) {
     let project_root_dir =
         PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("getting manifest directory"))
             .parent()

@@ -9,9 +9,17 @@ pub struct TypeRoot {
     #[serde(rename = "l")]
     pub line: u32,
     #[serde(rename = "i")]
-    pub inner: Named<ContainerFormat>,
+    pub inner: Named<RootItem>,
+    /// e.g. built-in types
     #[serde(rename = "e")]
     pub extras: Vec<Named<ContainerFormat>>,
+}
+
+/// Containers (structs and enums) or functions (fns with `#[fn_codegen]`).
+#[derive(Serialize, Deserialize, Debug)]
+pub enum RootItem {
+    Container(ContainerFormat),
+    Function(FunctionFormat),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -254,6 +262,15 @@ pub enum VariantFormat {
     Tuple(Vec<Format>),
     /// A struct with named parameters, e.g. `A` in `enum X { A { a: Foo } }`
     Struct(Vec<Named<Format>>),
+}
+
+/// Free standing function item such as `fn start() -> ()`.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FunctionFormat {
+    pub is_async: bool,
+    pub self_opt: Option<Named<Format>>,
+    pub params: Vec<Named<Format>>,
+    pub ret: Box<Format>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

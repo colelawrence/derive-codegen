@@ -6,19 +6,19 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{DeriveInput, Ident, Result};
 
-pub enum DerivationKind {
+pub enum LinkKind {
     Internal,
-    External { crate_name: &'static str },
+    /// This can be used for other crates to encapsulate derive-codegen, where they can re-export
+    /// the appropriate linkme stuff.
+    External {
+        /// The encapsulating crate's name as seen during a `use [crate_name]::{linkme, Context, CODEGEN_ITEMS};` statement.
+        crate_name: &'static str,
+    },
 }
 
 /// see [i_codegen_code::Context]
-pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
+pub fn derive(input: DeriveInput, kind: LinkKind) -> Result<TokenStream> {
     let ident: &Ident = &input.ident;
-    let dummy = Ident::new(
-        &format!("_IMPL_HERENOW_GENERATE_FOR_{}", ident),
-        Span::call_site(),
-    );
-
     let ctxt = Ctxt::new();
 
     let container = ast::Container::from_ast(&ctxt, &input, Derive::Serialize)
@@ -30,7 +30,7 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
     // ctxt.check().unwrap();
 
     let mut pctxt = ParseContext {
-        ctxt: Some(ctxt),
+        serde_container_ctxt: Some(ctxt),
         ident: ident.clone(),
         publish_builtins: Default::default(),
     };
@@ -43,7 +43,12 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
     let mut root = st::TypeRoot {
         file: "unknown".to_string(),
         line: 0,
-        inner: pctxt.derive_named(container_format, ident, &input.attrs, Some(&container)),
+        inner: pctxt.derive_named(
+            st::RootItem::Container(container_format),
+            ident,
+            &input.attrs,
+            Some(&container),
+        ),
         extras: Vec::new(),
     };
 
@@ -51,8 +56,70 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
         root.extras.push(named_container_format);
     }
 
+    create_linkme_tokens_from_type_root(root, kind, ident)
+}
+
+/// see [i_codegen_code::Context]
+pub fn item_fn(input: syn::ItemFn, kind: LinkKind) -> Result<TokenStream> {
+    let ident: &Ident = &input.sig.ident;
+
+    let mut pctxt = ParseContext {
+        serde_container_ctxt: None,
+        ident: ident.clone(),
+        publish_builtins: Default::default(),
+    };
+
+    let mut self_opt = None;
+    let params = input
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, arg)| match arg {
+            syn::FnArg::Receiver(recv) => {
+                let format = pctxt.type_to_format(&recv.ty);
+                let ident = syn::Ident::new("self", recv.self_token.span);
+                self_opt = Some(pctxt.derive_named(format, &ident, &recv.attrs, None));
+                None
+            }
+            syn::FnArg::Typed(pat) => Some(pctxt.pattern_to_named_format(&*pat, idx)),
+        })
+        .collect();
+    let fn_format = st::FunctionFormat {
+        is_async: input.sig.asyncness.is_some(),
+        self_opt,
+        params,
+        ret: Box::new(match input.sig.output {
+            syn::ReturnType::Default => st::Format::Unit,
+            syn::ReturnType::Type(_, ttype) => pctxt.type_to_format(&ttype),
+        }),
+    };
+
+    let mut root = st::TypeRoot {
+        file: "unknown".to_string(),
+        line: 0,
+        inner: pctxt.derive_named(st::RootItem::Function(fn_format), ident, &input.attrs, None),
+        extras: Vec::new(),
+    };
+
+    for (_builtin_id, named_container_format) in pctxt.publish_builtins.drain() {
+        root.extras.push(named_container_format);
+    }
+
+    create_linkme_tokens_from_type_root(root, kind, ident)
+}
+
+fn create_linkme_tokens_from_type_root(
+    root: st::TypeRoot,
+    kind: LinkKind,
+    ident: &Ident,
+) -> Result<TokenStream> {
+    let dummy = Ident::new(
+        &format!("_DERIVE_CODEGEN_PARSED_FOR_{}", ident),
+        Span::call_site(),
+    );
     let type_root_json: String = serde_json::to_string(&root).expect("serialize type root");
-    let type_root_json_lit = syn::LitStr::new(&type_root_json, container.ident.span());
+    let type_root_json_lit = syn::LitStr::new(&type_root_json, ident.span());
 
     let q_tags = root
         .inner
@@ -68,10 +135,10 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
         .flatten()
         .map(|attr| syn::LitStr::new(&attr, Span::call_site()));
 
-    // This will give a rust analyzer warning because of https://github.com/rust-lang/rust-analyzer/issues/6541
+    // This may wrongly give a rust analyzer warning about "snake case" because of https://github.com/rust-lang/rust-analyzer/issues/6541
     let i_codegen_code_crate_q = match kind {
-        DerivationKind::Internal => Ident::new("i_codegen_code", Span::call_site()),
-        DerivationKind::External { crate_name } => Ident::new(&crate_name, Span::call_site()),
+        LinkKind::Internal => Ident::new("i_codegen_code", Span::call_site()),
+        LinkKind::External { crate_name } => Ident::new(&crate_name, Span::call_site()),
     };
 
     Ok(quote! {
@@ -82,7 +149,7 @@ pub fn derive(input: DeriveInput, kind: DerivationKind) -> Result<TokenStream> {
         #[linkme(crate = ::#i_codegen_code_crate_q::linkme)]
         fn #dummy(context: &mut ::#i_codegen_code_crate_q::Context) {
             context.add_type_root(#type_root_json_lit, file!(), line!(), &[#(#q_tags,)*]);
-        };
+        }
     })
 }
 
@@ -388,9 +455,11 @@ fn spanned<T>(spans: &[proc_macro2::Span], value: T) -> st::Spanned<T> {
 }
 
 pub(crate) struct ParseContext {
-    ctxt: Option<serde_derive_internals::Ctxt>, // serde parse context for error reporting
+    /// serde parse context for error reporting
+    /// `None` for fn derives.
+    serde_container_ctxt: Option<serde_derive_internals::Ctxt>,
     #[allow(unused)]
-    ident: syn::Ident,      // name of enum struct
+    ident: syn::Ident, // name of enum struct
     /// Extras to publish like "Duration"
     publish_builtins: HashMap<String, st::Named<st::ContainerFormat>>,
 }
@@ -400,7 +469,7 @@ impl Drop for ParseContext {
         if !std::thread::panicking() {
             // must track this in case of errors so we can check them
             // if we don't consume the errors, we'll get an "unhandled errors" panic whether or not there were errors
-            if let Some(ctxt) = self.ctxt.take() {
+            if let Some(ctxt) = self.serde_container_ctxt.take() {
                 ctxt.check().expect("no errors")
             }
         }
@@ -434,6 +503,32 @@ impl<'a> ParseContext {
 
     fn field_to_format(&mut self, field: &ast::Field<'a>) -> st::Format {
         self.type_to_format(field.ty)
+    }
+
+    /// Used for fn args
+    /// If the argument name isn't present, we'll fallback to the `fallback_name`
+    pub(crate) fn pattern_to_named_format(
+        &mut self,
+        pat_type: &syn::PatType,
+        arg_position: usize,
+    ) -> st::Named<st::Format> {
+        let arg_ident = self
+            .pattern_binding_to_ident(&pat_type.pat)
+            .unwrap_or_else(|| {
+                syn::Ident::new(&format!("arg{arg_position}"), pat_type.colon_token.span)
+            });
+        let format = self.type_to_format(&pat_type.ty);
+
+        self.derive_named(format, &arg_ident, &pat_type.attrs, None)
+    }
+    /// The part where `&mut a` or `Some(a)` on the left side of the colon.
+    fn pattern_binding_to_ident(&self, pat: &syn::Pat) -> Option<Ident> {
+        match pat {
+            syn::Pat::Ident(ident) => Some(ident.ident.clone()),
+            syn::Pat::Reference(val) => self.pattern_binding_to_ident(&val.pat),
+            syn::Pat::Type(asc) => self.pattern_binding_to_ident(&asc.pat),
+            _ => None,
+        }
     }
 
     fn type_to_format(&mut self, ty: &syn::Type) -> st::Format {

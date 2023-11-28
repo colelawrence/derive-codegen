@@ -7,7 +7,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, ItemFn};
 
 mod parse;
 
@@ -18,7 +18,7 @@ mod parse;
 pub fn derive_codegen(input: TokenStream) -> TokenStream {
     parse::derive(
         parse_macro_input!(input as DeriveInput),
-        parse::DerivationKind::External {
+        parse::LinkKind::External {
             crate_name: "derive_codegen",
         },
     )
@@ -26,12 +26,65 @@ pub fn derive_codegen(input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Submit functions to your code generator
+///
+/// example:
+/// ```rs
+/// #[fn_codegen(tag = "my-tag")]
+/// fn my_function(item: i32) -> Result<(), String> {
+///   Err("Not implemented".to_string())
+/// }
+/// #[fn_codegen(tag = "my-tag")]
+/// fn my_function(
+///     #[codegen(myattr = "something")]
+///     item: i32
+/// ) -> Result<(), String> {
+///   Err("Not implemented".to_string())
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn fn_codegen(
+    attributes: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let function = parse_macro_input!(item as ItemFn);
+    // Hmm: Could we have a general `#[codegen]` attr macro that auto-detects the kind of item and infers the derive stuff, etc?
+    // Would you need to discern when there are multiple `#[codegen]` things? What would happen if the codegen is on a field?
+    let generated = parse::item_fn(
+        function.clone(),
+        parse::LinkKind::External {
+            crate_name: "derive_codegen",
+        },
+    )
+    .unwrap_or_else(|err| err.to_compile_error());
+    // // check that the reference links
+    // output.extend(quote::quote! {
+    //     type _ = #ident;
+    // });
+    proc_macro2::TokenStream::from(quote::quote! {
+         #function
+
+         #generated
+    })
+    .into()
+}
+
+/// Necessary to attach attributes outside the context of
+/// a derivation.
+#[proc_macro_attribute]
+pub fn codegen(
+    attributes: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    return item;
+}
+
 #[doc(hidden)]
 #[proc_macro_derive(CodegenInternal, attributes(codegen, serde))]
 pub fn derive_codegen_internal(input: TokenStream) -> TokenStream {
     parse::derive(
         parse_macro_input!(input as DeriveInput),
-        parse::DerivationKind::Internal,
+        parse::LinkKind::Internal,
     )
     .unwrap_or_else(|err| err.to_compile_error())
     .into()

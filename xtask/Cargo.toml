@@ -6,4 +6,4 @@ publish = false
 
 [dependencies]
 derive-codegen.workspace = true
-gumdrop = "0.8.1"
+clap = { version = "4.4.8", features = ["derive"] }

@@ -22,6 +22,7 @@ struct LocationID(String);
 #[codegen(tags = "derive-codegen-internal")]
 struct Input {
     declarations: Vec<InputDeclaration>,
+    functions: Vec<FunctionDeclaration>,
 }
 
 #[derive(Serialize, Debug, CodegenInternal)]
@@ -29,9 +30,31 @@ struct Input {
 struct InputDeclaration {
     id: String,
     id_location: LocationID,
+    /// Contains generics, docs, and `[codegen]` attr information.
     #[serde(flatten)]
     attrs: Attrs,
     container_kind: ContainerFormat,
+}
+
+#[derive(Serialize, Debug, CodegenInternal)]
+#[codegen(tags = "derive-codegen-internal")]
+struct FunctionDeclaration {
+    id: String,
+    id_location: LocationID,
+    /// Contains generics, docs, and `[codegen]` attr information.
+    #[serde(flatten)]
+    attrs: Attrs,
+    function: FunctionFormat,
+}
+
+#[derive(Serialize, Debug, CodegenInternal)]
+#[codegen(tags = "derive-codegen-internal")]
+struct FunctionFormat {
+    /// Whether this function was declared with async
+    is_async: bool,
+    self_opt: Option<Box<FunctionParameter>>,
+    params: Vec<FunctionParameter>,
+    return_type: Box<Format>,
 }
 
 #[derive(Deserialize, Debug, CodegenInternal)]
@@ -160,6 +183,16 @@ struct NamedField {
 
 #[derive(Serialize, Debug, CodegenInternal)]
 #[codegen(tags = "derive-codegen-internal")]
+struct FunctionParameter {
+    id: String,
+    id_location: LocationID,
+    #[serde(flatten)]
+    attrs: Attrs,
+    format: Format,
+}
+
+#[derive(Serialize, Debug, CodegenInternal)]
+#[codegen(tags = "derive-codegen-internal")]
 /// Description of a variant in an enum.
 enum VariantFormat {
     /// A variant without parameters, e.g. `A` in `enum X { A }`
@@ -183,9 +216,11 @@ struct Attrs {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     rust_generics: Vec<(String, LocationID)>,
     /// e.g. `#[serde(rename = "newName")]`, your generator will need to describe what it supports
+    /// Not applicable to derived functions.
     #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
     serde_attrs: BTreeMap<String, (String, LocationID)>,
     /// e.g. `#[serde(transparent)]`, your generator will need to describe what it supports
+    /// Not applicable to derived functions.
     #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
     serde_flags: BTreeMap<String, LocationID>,
     /// e.g. `#[codegen(ts_as = "Date")]` - these are customizable for your generator's use cases.
@@ -416,8 +451,54 @@ impl TypeRootConverter {
         }
     }
 
+    fn function_format_to_function_format(
+        &self,
+        function_format: st::FunctionFormat,
+    ) -> FunctionFormat {
+        let st::FunctionFormat {
+            params: args,
+            is_async,
+            ret,
+            self_opt,
+        } = function_format;
+        FunctionFormat {
+            params: args
+                .into_iter()
+                .map(|st_named_format| self.named_format_to_function_parameter(st_named_format))
+                .collect(),
+            is_async,
+            self_opt: self_opt
+                .map(|selff| Box::new(self.named_format_to_function_parameter(selff))),
+            return_type: Box::new(self.format_to_format(*ret)),
+        }
+    }
+
+    fn named_format_to_named_field(&self, named: st::Named<st::Format>) -> NamedField {
+        let (id_span, format, attrs) = self.unname(named);
+        let (id, id_location) = self.location_id(id_span);
+        NamedField {
+            attrs,
+            format: self.format_to_format(format),
+            id,
+            id_location,
+        }
+    }
+    fn named_format_to_function_parameter(
+        &self,
+        named: st::Named<st::Format>,
+    ) -> FunctionParameter {
+        let (id_span, format, attrs) = self.unname(named);
+        let (id, id_location) = self.location_id(id_span);
+        FunctionParameter {
+            attrs,
+            format: self.format_to_format(format),
+            id,
+            id_location,
+        }
+    }
     fn container_format_to_container_format(
         &self,
+        // needed to see serde attrs for ensuring correct interpretation
         attrs: &Attrs,
         container_format: st::ContainerFormat,
     ) -> ContainerFormat {
@@ -436,16 +517,7 @@ impl TypeRootConverter {
                 fields: {
                     fields
                         .into_par_iter()
-                        .map(|field| {
-                            let (id_span, format, attrs) = self.unname(field);
-                            let (id, id_location) = self.location_id(id_span);
-                            NamedField {
-                                attrs,
-                                format: self.format_to_format(format),
-                                id,
-                                id_location,
-                            }
-                        })
+                        .map(|field| self.named_format_to_named_field(field))
                         .collect()
                 },
             },
@@ -767,38 +839,54 @@ fn create_input_from_selection(selection: &Generation) -> Input {
         })
         .collect();
 
-    let declarations = tys
-        .into_par_iter()
-        .flat_map(
-            |TypeRoot {
-                 extras,
-                 file,
-                 line,
-                 inner,
-             }| {
-                std::iter::once(inner)
-                    .chain(extras)
-                    .map(|named_container| {
-                        let mut type_root_converter =
-                            type_root_converters.get(&file).unwrap().clone();
-                        type_root_converter.line_number_override = Some(line);
-                        (type_root_converter, named_container)
-                    })
-                    .collect::<Vec<_>>()
-            },
-        )
-        .map(|(converter, named_container)| {
-            let (id_span, container_format, attrs) = converter.unname(named_container);
+    let mut functions = Vec::new();
+    let mut declarations = Vec::<InputDeclaration>::new();
+    for TypeRoot {
+        extras,
+        file,
+        line,
+        inner,
+    } in tys
+    {
+        let mut converter = type_root_converters.get(&file).unwrap().clone();
+        converter.line_number_override = Some(line);
+        let (root_id_span, root_item, attrs) = converter.unname(inner);
+        let (id, id_location) = converter.location_id(root_id_span);
+        match root_item {
+            st::RootItem::Container(container_format) => {
+                declarations.push(InputDeclaration {
+                    id,
+                    id_location,
+                    container_kind: converter
+                        .container_format_to_container_format(&attrs, container_format),
+                    attrs,
+                });
+            }
+            st::RootItem::Function(function_format) => {
+                functions.push(FunctionDeclaration {
+                    id,
+                    id_location,
+                    function: converter.function_format_to_function_format(function_format),
+                    attrs,
+                });
+            }
+        }
+        // extra declarations like built-ins
+        for extra in extras {
+            let (id_span, container_format, attrs) = converter.unname(extra);
             let (id, id_location) = converter.location_id(id_span);
-            InputDeclaration {
+            declarations.push(InputDeclaration {
                 id,
                 id_location,
                 container_kind: converter
                     .container_format_to_container_format(&attrs, container_format),
                 attrs,
-            }
-        })
-        .collect::<Vec<InputDeclaration>>();
+            });
+        }
+    }
 
-    Input { declarations }
+    Input {
+        declarations,
+        functions,
+    }
 }
