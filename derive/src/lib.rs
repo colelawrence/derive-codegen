@@ -44,7 +44,7 @@ pub fn derive_codegen(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn fn_codegen(
-    attributes: proc_macro::TokenStream,
+    _attributes: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let function = parse_macro_input!(item as ItemFn);
@@ -73,7 +73,7 @@ pub fn fn_codegen(
 /// a derivation.
 #[proc_macro_attribute]
 pub fn codegen(
-    attributes: proc_macro::TokenStream,
+    _attributes: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     return item;
