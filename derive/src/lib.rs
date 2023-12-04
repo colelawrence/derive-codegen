@@ -7,7 +7,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput, ItemFn};
+use syn::{parse_macro_input, DeriveInput, ItemFn, Attribute};
 
 mod parse;
 
@@ -44,7 +44,8 @@ pub fn derive_codegen(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn fn_codegen(
-    _attributes: proc_macro::TokenStream,
+    // TODO: enable parsing this as part of the codegen attributes
+    _attribute: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let function = parse_macro_input!(item as ItemFn);

@@ -402,7 +402,14 @@ impl<'a> ParseContext {
                     return Ok(());
                 })
                 .expect("parsed serde attribute");
-            } else if attr.path().is_ident("codegen") {
+            } else if attr.path().is_ident("codegen")
+                || attr
+                    .path()
+                    .segments
+                    .last()
+                    .map(|a| a.ident.to_string() == "codegen")
+                    .unwrap_or(false)
+            {
                 attr.parse_nested_meta(|meta| {
                     let span = meta.input.span();
                     match meta.value() {
